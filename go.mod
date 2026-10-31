@@ -55,7 +55,8 @@ require (
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e
 	github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97
 	github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97
-	github.com/sagernet/sing v0.8.9
+	github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f
+	github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f
 	github.com/samber/lo v1.53.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.12.1
@@ -78,7 +79,7 @@ require (
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e
 	golang.org/x/net v0.48.0
 	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.39.0
+	golang.org/x/sys v0.41.0
 	google.golang.org/protobuf v1.34.2
 )
 
