@@ -85,7 +85,7 @@ func (to *TLSObfs) Write(b []byte) (int, error) {
 
 		n, err := to.write(b[i:end])
 		if err != nil {
-			return n, err
+			return i + n, err
 		}
 	}
 	return length, nil
@@ -94,9 +94,16 @@ func (to *TLSObfs) Write(b []byte) (int, error) {
 func (to *TLSObfs) write(b []byte) (int, error) {
 	if to.firstRequest {
 		helloMsg := makeClientHelloMsg(b, to.server)
-		_, err := to.Conn.Write(helloMsg)
+		n, err := to.Conn.Write(helloMsg)
 		to.firstRequest = false
-		return len(b), err
+		if n != len(helloMsg) && err == nil {
+			err = io.ErrShortWrite
+		}
+		if err != nil {
+			_ = to.Conn.Close()
+			return 0, err
+		}
+		return len(b), nil
 	}
 
 	buf := pool.GetBuffer()
@@ -104,13 +111,16 @@ func (to *TLSObfs) write(b []byte) (int, error) {
 	buf.Write([]byte{0x17, 0x03, 0x03})
 	binary.Write(buf, binary.BigEndian, uint16(len(b)))
 	buf.Write(b)
-	_, err := to.Conn.Write(buf.Bytes())
-	if err != nil {
-		// return 0 because errors occur here make the
-		// whole situation irrecoverable
-		return 0, err
+	n, err := to.Conn.Write(buf.Bytes())
+	if n < 0 || n > buf.Len() {
+		n, err = 0, io.ErrShortWrite
+	} else if n != buf.Len() && err == nil {
+		err = io.ErrShortWrite
 	}
-	return len(b), nil
+	if err != nil {
+		_ = to.Conn.Close()
+	}
+	return max(0, min(len(b), n-5)), err
 }
 
 // NewTLSObfs return a SimpleObfs

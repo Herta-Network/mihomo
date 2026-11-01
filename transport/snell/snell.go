@@ -8,6 +8,10 @@ import (
 	"net"
 	"net/netip"
 	"sync"
+	"sync/atomic"
+
+	"github.com/metacubex/sing/common/buf"
+	M "github.com/metacubex/sing/common/metadata"
 
 	"github.com/metacubex/mihomo/common/pool"
 	"github.com/metacubex/mihomo/transport/shadowsocks/shadowaead"
@@ -412,8 +416,12 @@ func ReadPacket(r io.Reader, payload []byte) (net.Addr, int, error) {
 
 type packetConn struct {
 	net.Conn
-	rMux sync.Mutex
-	wMux sync.Mutex
+	rMux      sync.Mutex
+	wMux      sync.Mutex
+	writeErr  error
+	closed    atomic.Bool
+	closeOnce sync.Once
+	closeErr  error
 }
 
 func (pc *packetConn) WritePacketFrame(b []byte) (int, error) {
@@ -426,6 +434,13 @@ func (pc *packetConn) WritePacketFrame(b []byte) (int, error) {
 }
 
 func (pc *packetConn) WriteTo(b []byte, addr net.Addr) (int, error) {
+	if _, ok := pc.frameBatchWriter(); ok {
+		n, err := pc.WritePacketBatchCount([]*buf.Buffer{buf.As(b)}, []M.Socksaddr{M.SocksaddrFromNet(addr)})
+		if n == 1 {
+			return len(b), err
+		}
+		return 0, err
+	}
 	pc.wMux.Lock()
 	defer pc.wMux.Unlock()
 

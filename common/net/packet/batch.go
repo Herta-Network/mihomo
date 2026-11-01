@@ -64,3 +64,7 @@ func (w *protectedBatchWriter) WritePacketBatchCount(buffers []*buf.Buffer, dest
 	}
 	return w.writer.WritePacketBatchCount(buffers, destinations)
 }
+
+func (c *enhancePacketConn) CreatePacketBatchWriterWithCount() (N.PacketBatchWriterWithCount, bool) {
+	return CreatePacketBatchWriterWithCount(c.PacketConn)
+}

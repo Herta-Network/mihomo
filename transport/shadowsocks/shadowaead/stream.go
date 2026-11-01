@@ -41,12 +41,16 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		buf[0], buf[1] = byte(0), byte(0)
 		w.Seal(buf[:0], nonce, buf[:2], nil)
 		increment(nonce)
-		_, err = w.Writer.Write(buf)
+		var written int
+		written, err = w.Writer.Write(buf)
+		if written != len(buf) && err == nil {
+			err = io.ErrShortWrite
+		}
 		return
 	}
 
-	for nr := 0; n < len(p) && err == nil; n += nr {
-		nr = payloadSizeMask
+	for n < len(p) {
+		nr := payloadSizeMask
 		if n+nr > len(p) {
 			nr = len(p) - n
 		}
@@ -56,7 +60,16 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		increment(nonce)
 		w.Seal(buf[:off], nonce, p[n:n+nr], nil)
 		increment(nonce)
-		_, err = w.Writer.Write(buf)
+		written, writeErr := w.Writer.Write(buf)
+		if written != len(buf) && writeErr == nil {
+			writeErr = io.ErrShortWrite
+		}
+		if written == len(buf) {
+			n += nr
+		}
+		if writeErr != nil {
+			return n, writeErr
+		}
 	}
 	return
 }
@@ -258,7 +271,10 @@ func (c *Conn) initWriter() error {
 	if err != nil {
 		return err
 	}
-	_, err = c.Conn.Write(salt)
+	written, err := c.Conn.Write(salt)
+	if written != len(salt) && err == nil {
+		err = io.ErrShortWrite
+	}
 	if err != nil {
 		return err
 	}

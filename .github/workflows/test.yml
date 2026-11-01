@@ -66,15 +66,15 @@ jobs:
         env:
           CGO_ENABLED: 1
         run: >-
-          go test -race ./common/net/... ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell
-          -run 'TestRelay|TestPacket|TestSingPacketIntegration'
+          go test -race ./common/net/... ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell ./transport/simple-obfs ./transport/shadowsocks/shadowaead
+          -run 'TestRelay|TestPacket|TestSingPacketIntegration|TestInboundSnellBatch|TestTLSPayloadCount'
           -count=1 -timeout=90s
 
       - name: Test sing fork integration with low memory buffers
         if: matrix.go-version == '1.26' && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || matrix.os == 'macos-latest')
         run: >-
-          go test -tags with_low_memory ./common/net/... ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell
-          -run 'TestRelay|TestPacket|TestSingPacketIntegration'
+          go test -tags with_low_memory ./common/net/... ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell ./transport/simple-obfs ./transport/shadowsocks/shadowaead
+          -run 'TestRelay|TestPacket|TestSingPacketIntegration|TestInboundSnellBatch|TestTLSPayloadCount'
           -count=1 -timeout=90s
 
       - name: Remove inbound test for macOS
@@ -94,7 +94,7 @@ jobs:
           CGO_ENABLED: 1
         run: >-
           go test -race ./adapter/outbound ./listener/inbound
-          -run 'TestSnell|TestInboundSnell($|UDP|HalfCloseAndReuse|LegacyV4Client|CloseUnblocksHandshake|_ShadowTls|_JLS)'
+          -run 'TestSnell|TestInboundSnell($|Batch|UDP|HalfCloseAndReuse|LegacyV4Client|CloseUnblocksHandshake|_ShadowTls|_JLS)'
           -count=1 -timeout=3m
 
       - name: Test VLESS Reverse against Xray
