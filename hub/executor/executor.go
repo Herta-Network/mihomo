@@ -237,11 +237,11 @@ func updateNTP(c *config.NTP) {
 
 func updateDNS(c *config.DNS, generalIPv6 bool) {
 	if !c.Enable {
-		resolver.DefaultResolver = nil
-		resolver.DefaultHostMapper = nil
-		resolver.DefaultService = nil
-		resolver.ProxyServerHostResolver = nil
-		resolver.DirectHostResolver = nil
+		resolver.DefaultResolver.Store(nil)
+		resolver.DefaultHostMapper.Store(nil)
+		resolver.DefaultService.Store(nil)
+		resolver.ProxyServerHostResolver.Store(nil)
+		resolver.DirectHostResolver.Store(nil)
 		dns.ReCreateServer("", nil, nil)
 		return
 	}
@@ -275,27 +275,27 @@ func updateDNS(c *config.DNS, generalIPv6 bool) {
 	})
 
 	// reuse cache of old host mapper
-	if old := resolver.DefaultHostMapper; old != nil {
+	if old := resolver.DefaultHostMapper.Load(); old != nil {
 		m.PatchFrom(old.(*dns.ResolverEnhancer))
 	}
 
 	s := dns.NewService(r, m)
 
-	resolver.DefaultResolver = r
-	resolver.DefaultHostMapper = m
-	resolver.DefaultService = s
-	resolver.UseSystemHosts = c.UseSystemHosts
+	resolver.DefaultResolver.Store(r)
+	resolver.DefaultHostMapper.Store(m)
+	resolver.DefaultService.Store(s)
+	resolver.UseSystemHosts.Store(c.UseSystemHosts)
 
 	if r.ProxyResolver.Invalid() {
-		resolver.ProxyServerHostResolver = r.ProxyResolver
+		resolver.ProxyServerHostResolver.Store(r.ProxyResolver)
 	} else {
-		resolver.ProxyServerHostResolver = r.Resolver
+		resolver.ProxyServerHostResolver.Store(r.Resolver)
 	}
 
 	if r.DirectResolver.Invalid() {
-		resolver.DirectHostResolver = r.DirectResolver
+		resolver.DirectHostResolver.Store(r.DirectResolver)
 	} else {
-		resolver.DirectHostResolver = r.Resolver
+		resolver.DirectHostResolver.Store(r.Resolver)
 	}
 
 	lc := inbound.NewListenConfig()
@@ -304,7 +304,8 @@ func updateDNS(c *config.DNS, generalIPv6 bool) {
 }
 
 func updateHosts(tree *trie.DomainTrie[resolver.HostValue]) {
-	resolver.DefaultHosts = resolver.NewHosts(tree)
+	hosts := resolver.NewHosts(tree)
+	resolver.DefaultHosts.Store(&hosts)
 }
 
 func updateProxies(proxies map[string]C.Proxy, providers map[string]P.ProxyProvider) {

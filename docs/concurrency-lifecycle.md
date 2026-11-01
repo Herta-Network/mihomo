@@ -5,7 +5,13 @@ The HTTP, SOCKS and mixed listeners decide admission and authentication bypass
 from one policy version. Setters and getters copy caller-owned slices. Queue
 empty checks and reads/removals share their lock; consumed entries are cleared.
 Log level, IPv6 disable, HTTP user agent and resource ETag settings use synchronized
-access. GEO loader registration is synchronized as well.
+access. GEO loader registration is synchronized as well. DNS resolver, enhancer,
+service and hosts references are published atomically. Each lookup keeps the
+loaded reference for its operation; DNS HTTP handlers and cache operations do
+not check one reference and then dereference a newly loaded, possibly nil one.
+Sniffer dispatcher and enable state are published together, and a connection
+uses that single snapshot. Tunnel mode is atomic. This also protects internal
+GEO HTTP dials that continue briefly while a configuration is being applied.
 
 Controller recreation serializes ownership of the HTTP, TLS, Unix and named-pipe
 servers. Listening happens before returning; closing explicitly releases the
@@ -49,18 +55,24 @@ stopping caller may hold that lock while waiting for the updater to exit.
 | Real HTTP update/configuration parsing overlap and duplicate admission | `component/updater/update_geo_concurrency_test.go` |
 | MMDB lookup/reload, retained handles, failed commit and post-rename cancellation | `component/mmdb/reader_concurrency_test.go` |
 | Initial download versus a newer publication and refreshed matchers | `component/geodata/files_test.go` |
+| DNS/hosts replacement during queries | `hub/executor/dns_concurrency_test.go` |
+| Sniffer enable/replacement and tunnel mode | `tunnel/reload_concurrency_test.go` |
 | Log level and retained singleflight result concurrency | `log/log_concurrency_test.go`, `common/singleflight/store_test.go` |
 
 ```sh
 go test -race ./adapter/inbound ./common/queue ./common/singleflight ./log ./constant \
   ./component/geodata/... ./component/mmdb ./component/updater ./hub/route ./hub/executor \
   -count=1 -timeout=120s
+go test -race ./tunnel -run TestSnifferAndModeConcurrentReload -count=1
 ```
 
 These regressions reproduce policy races/aliasing, a queue panic, controller races
 and leaked listeners, GEO settings/path races, MMDB reload races and a missing
 ASN-record panic on the previous implementation. Real download/configuration
 overlap additionally exposed IPv6-setting and retained-singleflight races.
+Solaris's complete fixed-dependency race run subsequently exposed DNS enhancer,
+hosts and sniffer publication races. Independent regressions reproduced those
+races plus the tunnel-mode race, then passed after atomic publication was added.
 The focused suite passes locally on macOS arm64. CI runs it on Linux, macOS and
 Windows; adding that CI step is not evidence that those remote jobs have run.
 

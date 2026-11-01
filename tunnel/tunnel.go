@@ -58,15 +58,14 @@ var (
 	udpInOnce sync.Once
 
 	// Outbound Rule
-	mode = Rule
+	mode = atomic.NewInt32Enum(Rule)
 
 	// default timeout for UDP session
 	udpTimeout = 60 * time.Second
 
 	findProcessMode = atomic.NewInt32Enum(process.FindProcessStrict)
 
-	snifferDispatcher *sniffer.Dispatcher
-	sniffingEnable    = false
+	currentSniffer = atomic.NewTypedValue(snifferState{})
 
 	ruleUpdateCallback = utils.NewCallback[P.RuleProvider]()
 )
@@ -159,17 +158,26 @@ func Status() TunnelStatus {
 	return status.Load()
 }
 
-func SetSniffing(b bool) {
-	if snifferDispatcher.Enable() {
-		configMux.Lock()
-		sniffingEnable = b
-		configMux.Unlock()
+type snifferState struct {
+	dispatcher *sniffer.Dispatcher
+	enabled    bool
+}
+
+func SetSniffing(enabled bool) {
+	for {
+		previous := currentSniffer.Load()
+		if !previous.dispatcher.Enable() {
+			return
+		}
+		next := previous
+		next.enabled = enabled
+		if currentSniffer.CompareAndSwap(previous, next) {
+			return
+		}
 	}
 }
 
-func IsSniffing() bool {
-	return sniffingEnable
-}
+func IsSniffing() bool { return currentSniffer.Load().enabled }
 
 // TCPIn return fan-in queue
 // Deprecated: using Tunnel instead
@@ -260,20 +268,17 @@ func UpdateListeners(newListeners map[string]C.InboundListener) {
 }
 
 func UpdateSniffer(dispatcher *sniffer.Dispatcher) {
-	configMux.Lock()
-	snifferDispatcher = dispatcher
-	sniffingEnable = dispatcher.Enable()
-	configMux.Unlock()
+	currentSniffer.Store(snifferState{dispatcher: dispatcher, enabled: dispatcher.Enable()})
 }
 
 // Mode return current mode
 func Mode() TunnelMode {
-	return mode
+	return mode.Load()
 }
 
 // SetMode change the mode of tunnel
 func SetMode(m TunnelMode) {
-	mode = m
+	mode.Store(m)
 }
 
 func FindProcessMode() process.FindProcessMode {
@@ -301,31 +306,28 @@ func fixMetadata(metadata *C.Metadata) {
 	}
 }
 
-func needLookupIP(metadata *C.Metadata) bool {
-	return resolver.MappingEnabled() && metadata.Host == "" && metadata.DstIP.IsValid()
-}
-
 func preHandleMetadata(metadata *C.Metadata) error {
-	// preprocess enhanced-mode metadata
-	if needLookupIP(metadata) {
-		host, exist := resolver.FindHostByIP(metadata.DstIP)
+	// Keep enhanced-mode decisions on one mapper while configuration changes.
+	mapper := resolver.DefaultHostMapper.Load()
+	if mapper != nil && mapper.MappingEnabled() && metadata.Host == "" && metadata.DstIP.IsValid() {
+		host, exist := mapper.FindHostByIP(metadata.DstIP)
 		if exist {
 			metadata.Host = host
 			metadata.DNSMode = C.DNSMapping
-			if resolver.IsFakeIP(metadata.DstIP) {
+			if mapper.IsFakeIP(metadata.DstIP) {
 				// only clear dstIP if it is confirmed to be a fake IP
 				metadata.DstIP = netip.Addr{}
 				metadata.DNSMode = C.DNSFakeIP
-			} else if node, ok := resolver.DefaultHosts.Search(host, false); ok {
+			} else if node, ok := resolver.DefaultHosts.Load().Search(host, false); ok {
 				// redir-host should lookup the hosts
 				metadata.DstIP, _ = node.RandIP()
 			} else if node != nil && node.IsDomain {
 				metadata.Host = node.Domain
 			}
-		} else if resolver.IsFakeIP(metadata.DstIP) {
+		} else if mapper.IsFakeIP(metadata.DstIP) {
 			return fmt.Errorf("fake DNS record %s missing", metadata.DstIP)
 		}
-	} else if node, ok := resolver.DefaultHosts.Search(metadata.Host, true); ok {
+	} else if node, ok := resolver.DefaultHosts.Load().Search(metadata.Host, true); ok {
 		// try use domain mapping
 		metadata.Host = node.Domain
 	}
@@ -335,9 +337,8 @@ func preHandleMetadata(metadata *C.Metadata) error {
 
 func resolveMetadata(metadata *C.Metadata) (proxy C.Proxy, rule C.Rule, err error) {
 	if metadata.SpecialProxy != "" {
-		var exist bool
-		proxy, exist = proxies[metadata.SpecialProxy]
-		if !exist {
+		proxy = Tunnel.ProxyByName(metadata.SpecialProxy)
+		if proxy == nil {
 			err = fmt.Errorf("proxy %s not found", metadata.SpecialProxy)
 		}
 		return
@@ -347,7 +348,7 @@ func resolveMetadata(metadata *C.Metadata) (proxy C.Proxy, rule C.Rule, err erro
 		attemptProcessLookup = metadata.Type != C.INNER
 	)
 
-	if node, ok := resolver.DefaultHosts.Search(metadata.Host, false); ok {
+	if node, ok := resolver.DefaultHosts.Load().Search(metadata.Host, false); ok {
 		metadata.DstIP, _ = node.RandIP()
 		resolved = true
 	}
@@ -417,11 +418,11 @@ func resolveMetadata(metadata *C.Metadata) (proxy C.Proxy, rule C.Rule, err erro
 		helper.FindProcess = nil
 	}
 
-	switch mode {
+	switch Mode() {
 	case Direct:
-		proxy = proxies["DIRECT"]
+		proxy = Tunnel.ProxyByName("DIRECT")
 	case Global:
-		proxy = proxies["GLOBAL"]
+		proxy = Tunnel.ProxyByName("GLOBAL")
 	// Rule
 	default:
 		proxy, rule, err = match(metadata, helper)
@@ -459,8 +460,9 @@ func handleUDPConn(packet C.PacketAdapter) {
 	key := packet.Key()
 	sender, loaded := natTable.GetOrCreate(key, func() C.PacketSender {
 		sender := newPacketSender()
-		if sniffingEnable && snifferDispatcher.Enable() {
-			return snifferDispatcher.UDPSniff(packet, sender)
+		sniff := currentSniffer.Load()
+		if sniff.enabled && sniff.dispatcher.Enable() {
+			return sniff.dispatcher.UDPSniff(packet, sender)
 		}
 		return sender
 	})
@@ -544,10 +546,11 @@ func handleTCPConn(connCtx C.ConnContext) {
 
 	conn := connCtx.Conn()
 	conn.ResetPeeked() // reset before sniffer
-	if sniffingEnable && snifferDispatcher.Enable() {
+	sniff := currentSniffer.Load()
+	if sniff.enabled && sniff.dispatcher.Enable() {
 		// Try to sniff a domain when `preHandleMetadata` failed, this is usually
 		// caused by a "Fake DNS record missing" error when enhanced-mode is fake-ip.
-		if snifferDispatcher.TCPSniff(conn, metadata) {
+		if sniff.dispatcher.TCPSniff(conn, metadata) {
 			// we now have a domain name
 			preHandleFailed = false
 		}
@@ -579,7 +582,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 
 	dialMetadata := metadata
 	if len(metadata.Host) > 0 {
-		if node, ok := resolver.DefaultHosts.Search(metadata.Host, false); ok {
+		if node, ok := resolver.DefaultHosts.Load().Search(metadata.Host, false); ok {
 			if dstIp, _ := node.RandIP(); !resolver.IsFakeIP(dstIp) {
 				dialMetadata.DstIP = dstIp
 				dialMetadata.DNSMode = C.DNSHosts
@@ -662,9 +665,9 @@ func logMetadata(metadata *C.Metadata, rule C.Rule, remoteConn C.Connection) {
 		} else {
 			log.Infoln("[%s] %s --> %s match %s using %s", strings.ToUpper(metadata.NetWork.String()), metadata.SourceDetail(), metadata.RemoteAddress(), rule.RuleType().String(), remoteConn.Chains().String())
 		}
-	case mode == Global:
+	case Mode() == Global:
 		log.Infoln("[%s] %s --> %s using GLOBAL", strings.ToUpper(metadata.NetWork.String()), metadata.SourceDetail(), metadata.RemoteAddress())
-	case mode == Direct:
+	case Mode() == Direct:
 		log.Infoln("[%s] %s --> %s using DIRECT", strings.ToUpper(metadata.NetWork.String()), metadata.SourceDetail(), metadata.RemoteAddress())
 	default:
 		log.Infoln("[%s] %s --> %s doesn't match any rule using %s", strings.ToUpper(metadata.NetWork.String()), metadata.SourceDetail(), metadata.RemoteAddress(), remoteConn.Chains().String())
