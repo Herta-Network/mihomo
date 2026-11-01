@@ -26,8 +26,8 @@ import (
 	obfs "github.com/metacubex/mihomo/transport/simple-obfs"
 	"github.com/metacubex/mihomo/transport/snell"
 
+	M "github.com/metacubex/sing/common/metadata"
 	SS "github.com/sagernet/sing-snell"
-	M "github.com/sagernet/sing/common/metadata"
 )
 
 const maxPacketLength = 0x3fff

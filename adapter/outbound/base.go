@@ -18,6 +18,7 @@ import (
 	"github.com/metacubex/mihomo/log"
 
 	"github.com/gofrs/uuid/v5"
+	SN "github.com/metacubex/sing/common/network"
 )
 
 type ProxyAdapter interface {
@@ -303,6 +304,10 @@ type packetConn struct {
 	connID      string
 	adapterAddr string
 	resolveUDP  func(ctx context.Context, metadata *C.Metadata) error
+}
+
+func (c *packetConn) CreatePacketBatchWriterWithCount() (SN.PacketBatchWriterWithCount, bool) {
+	return N.CreatePacketBatchWriterWithCount(c.EnhancePacketConn)
 }
 
 func (c *packetConn) ResolveUDP(ctx context.Context, metadata *C.Metadata) error {

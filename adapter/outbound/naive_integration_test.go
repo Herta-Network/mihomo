@@ -28,8 +28,13 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/adapter"
+	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/component/ech"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/sing/common/buf"
+	"github.com/metacubex/sing/common/bufio"
+	M "github.com/metacubex/sing/common/metadata"
+	SN "github.com/metacubex/sing/common/network"
 )
 
 func TestNaiveInterop(t *testing.T) {
@@ -100,6 +105,39 @@ func TestNaiveInterop(t *testing.T) {
 					t.Fatal("API dialer was bypassed")
 				}
 			})
+			t.Run("shared sing controlled copy", func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				conn, err := proxy.DialContext(ctx, naiveMetadata(t, tcpAddress, C.TCP))
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer conn.Close()
+				conn.SetDeadline(time.Now().Add(10 * time.Second))
+				writer := SN.UnwrapWriter(conn)
+				if _, ok := writer.(interface{ WriteBuffer(*buf.Buffer) error }); !ok {
+					t.Fatal("Cronet did not expose the shared buffer interface")
+				}
+				payload := bytes.Repeat([]byte("shared sing buffer"), 65536)
+				sent := make(chan error, 1)
+				go func() {
+					n, err := bufio.CopyWithOptions(conn, bytes.NewReader(payload), bufio.CopyOptions{ReadPolicy: func() bufio.CopyReadOptions { return bufio.CopyReadOptions{BatchSize: 4, MaxBufferSize: 16 * 1024} }})
+					if err == nil && n != int64(len(payload)) {
+						err = io.ErrShortWrite
+					}
+					sent <- err
+				}()
+				got := make([]byte, len(payload))
+				if _, err := io.ReadFull(conn, got); err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(got, payload) {
+					t.Fatal("controlled copy corrupted padding payload")
+				}
+				if err := <-sent; err != nil {
+					t.Fatal(err)
+				}
+			})
 			for _, version := range []int{1, 2} {
 				t.Run(fmt.Sprintf("UoT version %d", version), func(t *testing.T) {
 					p := newProxy(t, map[string]any{"udp-over-tcp-version": version})
@@ -115,18 +153,32 @@ func TestNaiveInterop(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					payload := []byte("Naive UoT round trip")
-					if _, err = conn.WriteTo(payload, address); err != nil {
-						t.Fatal(err)
+					batch, ok := N.CreatePacketBatchWriterWithCount(conn)
+					if !ok {
+						t.Fatal("Naive UoT count capability lost")
 					}
-					buffer := make([]byte, 2048)
-					n, source, err := conn.ReadFrom(buffer)
-					if err != nil {
-						t.Fatal(err)
+					payloads := [][]byte{[]byte("Naive UoT round trip"), nil, bytes.Repeat([]byte("b"), 4000), []byte("tail")}
+					buffers := make([]*buf.Buffer, len(payloads))
+					destinations := make([]M.Socksaddr, len(payloads))
+					for i, payload := range payloads {
+						buffers[i] = buf.As(payload)
+						destinations[i] = M.SocksaddrFromNet(address)
 					}
-					if !bytes.Equal(buffer[:n], payload) || source.String() != udpAddress {
-						t.Fatalf("bad UDP response from %v", source)
+					n, err := batch.WritePacketBatchCount(buffers, destinations)
+					if err != nil || n != len(payloads) {
+						t.Fatalf("batch progress=%d err=%v", n, err)
 					}
+					for _, payload := range payloads {
+						buffer := make([]byte, 65535)
+						n, source, err := conn.ReadFrom(buffer)
+						if err != nil {
+							t.Fatal(err)
+						}
+						if !bytes.Equal(buffer[:n], payload) || source.String() != udpAddress {
+							t.Fatalf("bad UDP response from %v: %d bytes", source, n)
+						}
+					}
+
 				})
 			}
 			for name, changes := range map[string]map[string]any{

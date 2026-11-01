@@ -10,13 +10,19 @@ import (
 
 	N "github.com/metacubex/mihomo/common/net"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/sing/common/buf"
+	"github.com/metacubex/sing/common/bufio"
+	M "github.com/metacubex/sing/common/metadata"
+	SN "github.com/metacubex/sing/common/network"
 )
 
 type packetSender struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	ch     chan C.PacketAdapter
+	ctx       context.Context
+	cancel    context.CancelFunc
+	ch        chan C.PacketAdapter
+	sendMutex sync.Mutex
 
 	// destination NAT mapping
 	originToTarget map[string]netip.Addr
@@ -62,8 +68,7 @@ func (s *packetSender) RestoreReadFrom(addr netip.Addr) netip.Addr {
 	return addr
 }
 
-func (s *packetSender) processPacket(pc C.PacketConn, packet C.PacketAdapter) {
-	defer packet.Drop()
+func (s *packetSender) packetAddress(pc C.PacketConn, packet C.PacketAdapter) *net.UDPAddr {
 	metadata := packet.Metadata()
 
 	var addr *net.UDPAddr
@@ -87,31 +92,123 @@ func (s *packetSender) processPacket(pc C.PacketConn, packet C.PacketAdapter) {
 			//       but we want keep sequence sending so can't open a new goroutine
 			if err := pc.ResolveUDP(s.ctx, metadata); err != nil {
 				log.Warnln("[UDP] Resolve Ip error: %s", err)
-				return
+				return nil
 			}
 		}
 
 		if !metadata.DstIP.IsValid() {
 			log.Warnln("[UDP] Destination ip not valid: %#v", metadata)
-			return
+			return nil
 		}
 		s.AddMapping(originMetadata, metadata)
 		addr = metadata.UDPAddr()
 	}
-	_ = handleUDPToRemote(packet, pc, addr)
+	return addr
 }
 
+func (s *packetSender) processPacket(pc C.PacketConn, packet C.PacketAdapter) {
+	defer packet.Drop()
+	if addr := s.packetAddress(pc, packet); addr != nil && s.ctx.Err() == nil {
+		_ = handleUDPToRemote(packet, pc, addr)
+	}
+}
+
+const packetSendBatchSize = 4
+
 func (s *packetSender) Process(pc C.PacketConn, proxy C.WriteBackProxy) {
+	var writer SN.PacketBatchWriterWithCount
+	canBatch := false
+	if !features.WithLowMemory {
+		writer, canBatch = N.CreatePacketBatchWriterWithCount(pc)
+	}
 	for {
 		select {
 		case <-s.ctx.Done():
-			return // sender closed
-		case packet := <-s.ch:
-			if proxy != nil {
-				proxy.UpdateWriteBack(packet)
+			return
+		case first := <-s.ch:
+			if s.ctx.Err() != nil {
+				first.Drop()
+				return
 			}
-			s.processPacket(pc, packet)
+			if !canBatch {
+				if proxy != nil {
+					proxy.UpdateWriteBack(first)
+				}
+				s.processPacket(pc, first)
+				continue
+			}
+			packets := [packetSendBatchSize]C.PacketAdapter{first}
+			count := 1
+		drain:
+			for count < len(packets) {
+				select {
+				case packets[count] = <-s.ch:
+					count++
+				default:
+					break drain
+				}
+			}
+			if count == 1 {
+				if proxy != nil {
+					proxy.UpdateWriteBack(first)
+				}
+				s.processPacket(pc, first)
+				continue
+			}
+			s.processBatch(pc, proxy, writer, packets[:count])
 		}
+	}
+}
+
+func (s *packetSender) processBatch(pc C.PacketConn, proxy C.WriteBackProxy, writer SN.PacketBatchWriterWithCount, packets []C.PacketAdapter) {
+	defer func() {
+		for _, packet := range packets {
+			packet.Drop()
+		}
+	}()
+	var buffers [packetSendBatchSize]*buf.Buffer
+	var destinations [packetSendBatchSize]M.Socksaddr
+	pending := 0
+	options := SN.NewReadWaitOptions(nil, pc)
+	flush := func() {
+		if pending == 0 {
+			return
+		}
+		if s.ctx.Err() != nil {
+			buf.ReleaseMulti(buffers[:pending])
+		} else {
+			n, err := writer.WritePacketBatchCount(buffers[:pending], destinations[:pending])
+			n, _ = bufio.CheckPacketBatchCount(n, pending, err)
+			if n > 0 {
+				_ = pc.SetReadDeadline(time.Now().Add(udpTimeout))
+			}
+		}
+		clear(buffers[:pending])
+		clear(destinations[:pending])
+		pending = 0
+	}
+	defer flush()
+	for _, packet := range packets {
+		if s.ctx.Err() != nil {
+			return
+		}
+		// Do not hold earlier packets behind resolution of a new destination.
+		s.mappingMutex.RLock()
+		mapped := s.originToTarget[packet.Metadata().String()].IsValid()
+		s.mappingMutex.RUnlock()
+		if !mapped {
+			flush()
+		}
+		if proxy != nil {
+			proxy.UpdateWriteBack(packet)
+		}
+		addr := s.packetAddress(pc, packet)
+		if addr == nil {
+			continue
+		}
+		buffers[pending] = options.Copy(buf.As(packet.Data()))
+		destinations[pending] = M.SocksaddrFromNet(addr)
+		pending++
 	}
 }
 
@@ -127,25 +224,25 @@ func (s *packetSender) dropAll() {
 }
 
 func (s *packetSender) Send(packet C.PacketAdapter) {
-	select {
-	case <-s.ctx.Done():
-		packet.Drop() // sender closed before Send()
-		return
-	default:
+	s.sendMutex.Lock()
+	if s.ctx.Err() == nil {
+		select {
+		case s.ch <- packet:
+			s.sendMutex.Unlock()
+			return
+		default:
+		}
 	}
-
-	select {
-	case s.ch <- packet:
-		// put ok, so don't drop packet, will process by other side of chan
-	case <-s.ctx.Done():
-		packet.Drop() // sender closed when putting data to chan
-	default:
-		packet.Drop() // chan is full
-	}
+	s.sendMutex.Unlock()
+	packet.Drop()
 }
 
 func (s *packetSender) Close() {
+	s.sendMutex.Lock()
 	s.cancel()
+	s.sendMutex.Unlock()
+	// After cancellation no sender can enqueue. Release callbacks run outside
+	// the admission lock, so a callback may safely close or send again.
 	s.dropAll()
 }
 

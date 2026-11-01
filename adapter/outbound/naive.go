@@ -15,10 +15,9 @@ import (
 	"github.com/metacubex/mihomo/log"
 
 	M "github.com/metacubex/sing/common/metadata"
+	SN "github.com/metacubex/sing/common/network"
 	"github.com/metacubex/sing/common/uot"
 	cronet "github.com/sagernet/cronet-go"
-	SM "github.com/sagernet/sing/common/metadata"
-	SN "github.com/sagernet/sing/common/network"
 )
 
 type Naive struct {
@@ -79,7 +78,7 @@ func NewNaive(option NaiveOption) (*Naive, error) {
 	n.client, err = cronet.NewNaiveClient(cronet.NaiveClientOptions{
 		Context:                  ctx,
 		Logger:                   log.SingInfoToDebugLogger,
-		ServerAddress:            SM.ParseSocksaddrHostPort(option.Server, uint16(option.Port)),
+		ServerAddress:            M.ParseSocksaddrHostPort(option.Server, uint16(option.Port)),
 		ServerName:               option.SNI,
 		Username:                 option.Username,
 		Password:                 option.Password,
@@ -108,7 +107,7 @@ func NewNaive(option NaiveOption) (*Naive, error) {
 	return n, nil
 }
 
-func (n *Naive) dial(ctx context.Context, destination SM.Socksaddr) (net.Conn, error) {
+func (n *Naive) dial(ctx context.Context, destination M.Socksaddr) (net.Conn, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -132,7 +131,7 @@ func (n *Naive) dial(ctx context.Context, destination SM.Socksaddr) (net.Conn, e
 }
 
 func (n *Naive) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
-	conn, err := n.dial(ctx, SM.ParseSocksaddrHostPort(metadata.String(), metadata.DstPort))
+	conn, err := n.dial(ctx, M.ParseSocksaddrHostPort(metadata.String(), metadata.DstPort))
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +147,7 @@ func (n *Naive) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (
 	}
 	version := uint8(n.option.UDPOverTCPVersion)
 	requestDestination := uot.RequestDestination(version)
-	conn, err := n.dial(ctx, SM.ParseSocksaddr(requestDestination.String()))
+	conn, err := n.dial(ctx, requestDestination)
 	if err != nil {
 		return nil, err
 	}
@@ -180,16 +179,15 @@ func (n *Naive) Close() error {
 	return n.client.Close()
 }
 
-// SagerNet and MetaCubeX's Socksaddr are distinct Go types; bridge only the
-// standard net.Conn/net.PacketConn boundary, preserving mihomo's socket policy.
+// Adapt the shared sing dialer interface while preserving mihomo's socket policy.
 type naiveDialer struct{ C.Dialer }
 
 var _ SN.Dialer = naiveDialer{}
 
-func (d naiveDialer) DialContext(ctx context.Context, network string, destination SM.Socksaddr) (net.Conn, error) {
+func (d naiveDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	return d.Dialer.DialContext(ctx, network, destination.String())
 }
 
-func (d naiveDialer) ListenPacket(ctx context.Context, destination SM.Socksaddr) (net.PacketConn, error) {
+func (d naiveDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	return d.Dialer.ListenPacket(ctx, "udp", "", destination.AddrPort())
 }

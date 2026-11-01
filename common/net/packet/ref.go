@@ -65,10 +65,10 @@ func (c *refPacketConn) WriterReplaceable() bool { // Relay() will handle refere
 
 func NewRefPacketConn(pc net.PacketConn, ref any) EnhancePacketConn {
 	rPC := &refPacketConn{pc: NewEnhancePacketConn(pc), ref: ref}
-	if singPC, isSingPC := pc.(SingPacketConn); isSingPC {
+	if _, isSingPC := pc.(SingPacketConn); isSingPC {
 		return &refSingPacketConn{
 			refPacketConn:  rPC,
-			singPacketConn: singPC,
+			singPacketConn: rPC.pc.(SingPacketConn),
 		}
 	}
 	return rPC

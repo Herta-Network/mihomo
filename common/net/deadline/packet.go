@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/metacubex/mihomo/common/atomic"
@@ -23,6 +24,10 @@ type NetPacketConn struct {
 	disablePipe  atomic.Bool
 	inRead       atomic.Bool
 	resultCh     chan any
+	done         chan struct{}
+	closeOnce    sync.Once
+	publishMutex sync.Mutex
+	closeErr     error
 }
 
 func NewNetPacketConn(pc net.PacketConn) net.PacketConn {
@@ -30,8 +35,9 @@ func NewNetPacketConn(pc net.PacketConn) net.PacketConn {
 		PacketConn:   pc,
 		pipeDeadline: MakePipeDeadline(),
 		resultCh:     make(chan any, 1),
+		done:         make(chan struct{}),
 	}
-	npc.resultCh <- nil
+	npc.publishResult(nil)
 	if enhancePC, isEnhance := pc.(packet.EnhancePacketConn); isEnhance {
 		epc := &EnhancePacketConn{
 			NetPacketConn: npc,
@@ -64,6 +70,9 @@ func NewNetPacketConn(pc net.PacketConn) net.PacketConn {
 }
 
 func (c *NetPacketConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+	if c.isClosed() {
+		return 0, nil, net.ErrClosed
+	}
 FOR:
 	for {
 		select {
@@ -73,16 +82,18 @@ FOR:
 					n = copy(p, result.data)
 					addr = result.addr
 					err = result.err
-					c.resultCh <- nil // finish cache read
+					c.publishResult(nil) // finish cache read
 					return
 				}
-				c.resultCh <- result // another type of read
-				runtime.Gosched()    // allowing other goroutines to run
+				c.publishResult(result) // another type of read
+				runtime.Gosched()       // allowing other goroutines to run
 				continue FOR
 			} else {
-				c.resultCh <- nil
+				c.publishResult(nil)
 				break FOR
 			}
+		case <-c.done:
+			return 0, nil, net.ErrClosed
 		case <-c.pipeDeadline.Wait():
 			return 0, nil, os.ErrDeadlineExceeded
 		}
@@ -97,7 +108,11 @@ FOR:
 		return
 	}
 
-	<-c.resultCh
+	select {
+	case <-c.done:
+		return 0, nil, net.ErrClosed
+	case <-c.resultCh:
+	}
 	go c.pipeReadFrom(len(p))
 
 	return c.ReadFrom(p)
@@ -111,7 +126,7 @@ func (c *NetPacketConn) pipeReadFrom(size int) {
 	result.data = buffer
 	result.addr = addr
 	result.err = err
-	c.resultCh <- result
+	c.publishResult(result)
 }
 
 func (c *NetPacketConn) SetReadDeadline(t time.Time) error {
@@ -127,9 +142,12 @@ func (c *NetPacketConn) SetReadDeadline(t time.Time) error {
 }
 
 func (c *NetPacketConn) ReaderReplaceable() bool {
+	if c.isClosed() {
+		return false
+	}
 	select {
 	case result := <-c.resultCh:
-		c.resultCh <- result
+		c.publishResult(result)
 		if result != nil {
 			return false // cache reading
 		} else {
@@ -151,4 +169,58 @@ func (c *NetPacketConn) Upstream() any {
 
 func (c *NetPacketConn) NeedAdditionalReadDeadline() bool {
 	return false
+}
+
+// Close interrupts pending reads before discarding cached owned packets. A
+// result arriving after close is released by its producer, never left in a
+// channel whose consumer has timed out.
+func (c *NetPacketConn) Close() error {
+	c.closeOnce.Do(func() {
+		close(c.done)
+		c.publishMutex.Lock()
+		select {
+		case result := <-c.resultCh:
+			releasePacketResult(result)
+		default:
+		}
+		c.publishMutex.Unlock()
+		c.closeErr = c.PacketConn.Close()
+	})
+	return c.closeErr
+}
+
+func (c *NetPacketConn) publishResult(result any) {
+	c.publishMutex.Lock()
+	defer c.publishMutex.Unlock()
+	if c.isClosed() {
+		releasePacketResult(result)
+		return
+	}
+	select {
+	case <-c.done:
+		releasePacketResult(result)
+	case c.resultCh <- result:
+	}
+}
+
+func releasePacketResult(result any) {
+	switch result := result.(type) {
+	case *enhanceReadResult:
+		if result.put != nil {
+			result.put()
+		}
+	case *singReadResult:
+		result.buffer.Release()
+	case *singWaitReadResult:
+		result.buffer.Release()
+	}
+}
+
+func (c *NetPacketConn) isClosed() bool {
+	select {
+	case <-c.done:
+		return true
+	default:
+		return false
+	}
 }

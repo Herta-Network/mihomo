@@ -9,11 +9,11 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/snell"
 
+	M "github.com/metacubex/sing/common/metadata"
+	SN "github.com/metacubex/sing/common/network"
 	SS "github.com/sagernet/sing-snell"
 	"github.com/sagernet/sing-snell/snellv4"
 	"github.com/sagernet/sing-snell/snellv6"
-	M "github.com/sagernet/sing/common/metadata"
-	SN "github.com/sagernet/sing/common/network"
 )
 
 type snellClient interface {
@@ -97,7 +97,7 @@ func (s *Snell) listenSingSnellPacket(ctx context.Context) (_ C.PacketConn, err 
 }
 
 // Keep socket policy and transport wrappers in mihomo; sing-snell owns framing
-// and the reuse pool. Cross the two sing implementations through net.Conn.
+// and the reuse pool.
 type snellDialer struct{ snell *Snell }
 
 func (d snellDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (_ net.Conn, err error) {

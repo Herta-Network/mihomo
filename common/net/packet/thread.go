@@ -26,10 +26,10 @@ func (c *threadSafePacketConn) ReaderReplaceable() bool {
 
 func NewThreadSafePacketConn(pc net.PacketConn) EnhancePacketConn {
 	tsPC := &threadSafePacketConn{EnhancePacketConn: NewEnhancePacketConn(pc)}
-	if singPC, isSingPC := pc.(SingPacketConn); isSingPC {
+	if _, isSingPC := pc.(SingPacketConn); isSingPC {
 		return &threadSafeSingPacketConn{
 			threadSafePacketConn: tsPC,
-			singPacketConn:       singPC,
+			singPacketConn:       tsPC.EnhancePacketConn.(SingPacketConn),
 		}
 	}
 	return tsPC

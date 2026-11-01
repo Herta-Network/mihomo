@@ -32,6 +32,9 @@ type enhancePacketConn struct {
 }
 
 func (c *enhancePacketConn) WaitReadFrom() (data []byte, put func(), addr net.Addr, err error) {
+	if c.netPacketConn.isClosed() {
+		return nil, nil, nil, net.ErrClosed
+	}
 FOR:
 	for {
 		select {
@@ -42,16 +45,18 @@ FOR:
 					put = result.put
 					addr = result.addr
 					err = result.err
-					c.netPacketConn.resultCh <- nil // finish cache read
+					c.netPacketConn.publishResult(nil) // finish cache read
 					return
 				}
-				c.netPacketConn.resultCh <- result // another type of read
-				runtime.Gosched()                  // allowing other goroutines to run
+				c.netPacketConn.publishResult(result) // another type of read
+				runtime.Gosched()                     // allowing other goroutines to run
 				continue FOR
 			} else {
-				c.netPacketConn.resultCh <- nil
+				c.netPacketConn.publishResult(nil)
 				break FOR
 			}
+		case <-c.netPacketConn.done:
+			return nil, nil, nil, net.ErrClosed
 		case <-c.netPacketConn.pipeDeadline.Wait():
 			return nil, nil, nil, os.ErrDeadlineExceeded
 		}
@@ -66,7 +71,11 @@ FOR:
 		return
 	}
 
-	<-c.netPacketConn.resultCh
+	select {
+	case <-c.netPacketConn.done:
+		return nil, nil, nil, net.ErrClosed
+	case <-c.netPacketConn.resultCh:
+	}
 	go c.pipeWaitReadFrom()
 
 	return c.WaitReadFrom()
@@ -79,5 +88,5 @@ func (c *enhancePacketConn) pipeWaitReadFrom() {
 	result.put = put
 	result.addr = addr
 	result.err = err
-	c.netPacketConn.resultCh <- result
+	c.netPacketConn.publishResult(result)
 }

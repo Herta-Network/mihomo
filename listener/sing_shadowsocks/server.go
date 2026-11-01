@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync/atomic"
 
 	"github.com/metacubex/mihomo/adapter/inbound"
+	P "github.com/metacubex/mihomo/common/net/packet"
 	"github.com/metacubex/mihomo/common/sockopt"
 	C "github.com/metacubex/mihomo/constant"
 	LC "github.com/metacubex/mihomo/listener/config"
@@ -25,14 +27,13 @@ import (
 	"github.com/metacubex/sing-shadowsocks/shadowaead_2022"
 	"github.com/metacubex/sing/common"
 	"github.com/metacubex/sing/common/auth"
-	"github.com/metacubex/sing/common/buf"
 	"github.com/metacubex/sing/common/bufio"
 	M "github.com/metacubex/sing/common/metadata"
 	"github.com/metacubex/sing/common/network"
 )
 
 type Listener struct {
-	closed       bool
+	closed       atomic.Bool
 	config       LC.ShadowsocksServer
 	listeners    []net.Listener
 	udpListeners []net.PacketConn
@@ -163,30 +164,12 @@ func New(config LC.ShadowsocksServer, lc C.InboundListenConfig, tunnel C.Tunnel,
 
 			go func() {
 				conn := bufio.NewPacketConn(ul)
-				rwOptions := network.NewReadWaitOptions(conn, sl.service)
-				readWaiter, isReadWaiter := bufio.CreatePacketReadWaiter(conn)
-				if isReadWaiter {
-					readWaiter.InitializeReadWaiter(rwOptions)
-				}
+				reader := P.NewReader(conn, network.NewReadWaitOptions(conn, sl.service))
+				defer reader.Close()
 				for {
-					var (
-						buff *buf.Buffer
-						dest M.Socksaddr
-						err  error
-					)
-					buff = nil // clear last loop status, avoid repeat release
-					if isReadWaiter {
-						buff, dest, err = readWaiter.WaitReadPacket()
-					} else {
-						buff = rwOptions.NewPacketBuffer()
-						dest, err = conn.ReadPacket(buff)
-						if buff != nil {
-							rwOptions.PostReturn(buff)
-						}
-					}
+					buff, dest, err := reader.ReadPacket()
 					if err != nil {
-						buff.Release()
-						if sl.closed {
+						if sl.closed.Load() {
 							break
 						}
 						continue
@@ -219,7 +202,7 @@ func New(config LC.ShadowsocksServer, lc C.InboundListenConfig, tunnel C.Tunnel,
 			for {
 				c, err := l.Accept()
 				if err != nil {
-					if sl.closed {
+					if sl.closed.Load() {
 						break
 					}
 					continue
@@ -234,7 +217,7 @@ func New(config LC.ShadowsocksServer, lc C.InboundListenConfig, tunnel C.Tunnel,
 }
 
 func (l *Listener) Close() error {
-	l.closed = true
+	l.closed.Store(true)
 	var retErr error
 	for _, lis := range l.listeners {
 		err := lis.Close()

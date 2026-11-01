@@ -13,7 +13,8 @@ case "$target_os/$target_arch" in
   linux/amd64|linux/arm64|windows/amd64|windows/arm64)
     tags="$tags,with_purego"
     export CGO_ENABLED=0
-    library_module="github.com/sagernet/cronet-go/lib/${target_os}_${target_arch}"
+    library_module=$(go list -tags "$tags" -f '{{range .Imports}}{{println .}}{{end}}' github.com/sagernet/cronet-go/all |
+      python3 -c 'import sys; suffix="/cronet-go/lib/"+sys.argv[1]; matches=[line.strip() for line in sys.stdin if line.strip().endswith(suffix)]; assert len(matches)==1, matches; print(matches[0])' "${target_os}_${target_arch}")
     # Use the native revision selected by cronet-go/all. Its generated package
     # commit can differ from the commit that contains the compiled libraries.
     version=$(go list -m -f '{{.Version}}' "$library_module")

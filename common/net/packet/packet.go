@@ -17,7 +17,7 @@ type EnhancePacketConn interface {
 
 func NewEnhancePacketConn(pc net.PacketConn) EnhancePacketConn {
 	if udpConn, isUDPConn := pc.(*net.UDPConn); isUDPConn {
-		return &enhanceUDPConn{UDPConn: udpConn}
+		return newEnhanceUDPConn(udpConn)
 	}
 	if enhancePC, isEnhancePC := pc.(EnhancePacketConn); isEnhancePC {
 		return enhancePC
@@ -51,26 +51,15 @@ func (c *enhancePacketConn) ReaderReplaceable() bool {
 	return true
 }
 
-func (c *enhanceUDPConn) Upstream() any {
-	return c.UDPConn
-}
-
-func (c *enhanceUDPConn) WriterReplaceable() bool {
-	return true
-}
-
-func (c *enhanceUDPConn) ReaderReplaceable() bool {
-	return true
-}
-
 func waitReadFrom(pc net.PacketConn) (data []byte, put func(), addr net.Addr, err error) {
-	readBuf := pool.Get(pool.UDPBufferSize)
+	// A datagram cannot be split to fit the low-memory stream/pool default.
+	readBuf := pool.Get(maxPacketSize)
 	put = func() {
 		_ = pool.Put(readBuf)
 	}
 	var readN int
 	readN, addr, err = pc.ReadFrom(readBuf)
-	if readN > 0 {
+	if err == nil && readN > 0 {
 		data = readBuf[:readN]
 	} else {
 		put()

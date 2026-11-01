@@ -1,5 +1,6 @@
 name: Test
 on:
+  workflow_dispatch:
   push:
     paths-ignore:
       - "docs/**"
@@ -7,11 +8,13 @@ on:
       - ".github/ISSUE_TEMPLATE/**"
     branches:
       - Alpha
+      - Meta
     tags:
       - "v*"
   pull_request:
     branches:
       - Alpha
+      - Meta
 
 jobs:
   test:
@@ -54,6 +57,25 @@ jobs:
 
       - name: Verify Go env
         run: go env
+
+      - name: Verify a single sing implementation
+        run: python3 scripts/check-sing-source.py
+
+      - name: Test sing fork integration with race detector
+        if: matrix.go-version == '1.26' && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || matrix.os == 'macos-latest')
+        env:
+          CGO_ENABLED: 1
+        run: >-
+          go test -race ./common/net/... ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell
+          -run 'TestRelay|TestPacket|TestSingPacketIntegration'
+          -count=1 -timeout=90s
+
+      - name: Test sing fork integration with low memory buffers
+        if: matrix.go-version == '1.26' && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || matrix.os == 'macos-latest')
+        run: >-
+          go test -tags with_low_memory ./common/net/... ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell
+          -run 'TestRelay|TestPacket|TestSingPacketIntegration'
+          -count=1 -timeout=90s
 
       - name: Remove inbound test for macOS
         if: ${{ runner.os == 'macOS' }}

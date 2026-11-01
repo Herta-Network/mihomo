@@ -55,7 +55,7 @@ For example, cross-compile Windows on another host:
 GOOS=windows GOARCH=amd64 bash scripts/build-naive.sh
 ```
 
-Linux and Windows builds must ship **both** the executable and the accompanying `libcronet.so`/`libcronet.dll`. `with_purego` removes the CGO build requirement, not the native runtime dependency. The bindings and `cronet-go/all` are pinned together in `go.mod`; the script downloads the native library revision selected by that generated `all` module. Do not substitute a library from an unrelated release. The script requires Python 3 to read Go's module download metadata.
+Linux and Windows builds must ship **both** the executable and the accompanying `libcronet.so`/`libcronet.dll`. `with_purego` removes the CGO build requirement, not the native runtime dependency. The bindings and `cronet-go/all` package share the Herta fork root module pinned in `go.mod`; the script downloads the native library revision selected by its platform imports. Do not substitute a library from an unrelated release. The script requires Python 3 to read Go's module download metadata.
 
 macOS requires Xcode's command-line tools and links the library statically:
 

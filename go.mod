@@ -54,8 +54,6 @@ require (
 	github.com/openacid/low v0.1.21
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e
 	github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97
-	github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97
-	github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f
 	github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f
 	github.com/samber/lo v1.53.0
 	github.com/sirupsen/logrus v1.9.4
@@ -183,3 +181,10 @@ require (
 
 // for https://github.com/golang/protobuf/issues/1704
 replace google.golang.org/protobuf => github.com/metacubex/protobuf-go v0.0.0-20260306035419-7ceee0674686
+
+// Fixed fork revision; see docs/sing-fork.md for data-path integration and limits.
+replace github.com/metacubex/sing => github.com/Herta-Network/sing v0.0.0-20261101100421-6ff3643691ad
+
+replace github.com/sagernet/cronet-go => github.com/Herta-Network/cronet-go v0.0.0-20261101093049-511fbbf40a07
+
+replace github.com/sagernet/sing-snell => github.com/Herta-Network/sing-snell v0.0.0-20261101093049-6a642f127a54

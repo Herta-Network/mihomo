@@ -4,7 +4,6 @@ import (
 	"net"
 
 	"github.com/metacubex/sing/common/buf"
-	"github.com/metacubex/sing/common/bufio"
 	M "github.com/metacubex/sing/common/metadata"
 	N "github.com/metacubex/sing/common/network"
 )
@@ -18,42 +17,31 @@ type EnhanceSingPacketConn interface {
 
 type enhanceSingPacketConn struct {
 	SingPacketConn
-	packetReadWaiter N.PacketReadWaiter
+	readState
 }
 
-func (c *enhanceSingPacketConn) WaitReadFrom() (data []byte, put func(), addr net.Addr, err error) {
-	var buff *buf.Buffer
-	var dest M.Socksaddr
-	rwOptions := N.ReadWaitOptions{}
-	if c.packetReadWaiter != nil {
-		c.packetReadWaiter.InitializeReadWaiter(rwOptions)
-		buff, dest, err = c.packetReadWaiter.WaitReadPacket()
-	} else {
-		buff = rwOptions.NewPacketBuffer()
-		dest, err = c.SingPacketConn.ReadPacket(buff)
-		if buff != nil {
-			rwOptions.PostReturn(buff)
-		}
-	}
-	if dest.IsFqdn() {
-		addr = dest
-	} else {
-		addr = dest.UDPAddr()
-	}
+func (c *enhanceSingPacketConn) WaitReadFrom() ([]byte, func(), net.Addr, error) {
+	return c.readState.waitReadFrom(c.SingPacketConn)
+}
+
+func (c *enhanceSingPacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
+	return c.readState.readFrom(c.SingPacketConn, p)
+}
+
+func (c *enhanceSingPacketConn) ReadPacket(buffer *buf.Buffer) (M.Socksaddr, error) {
+	packet, destination, err := c.readState.read(c.SingPacketConn)
 	if err != nil {
-		buff.Release()
-		return
+		return destination, err
 	}
-	if buff == nil {
-		return
-	}
-	if buff.IsEmpty() {
-		buff.Release()
-		return
-	}
-	data = buff.Bytes()
-	put = buff.Release
-	return
+	defer packet.Release()
+	_, err = buffer.Write(packet.Bytes())
+	return destination, err
+}
+
+func (c *enhanceSingPacketConn) Close() error {
+	err := c.SingPacketConn.Close()
+	c.readState.close()
+	return err
 }
 
 func (c *enhanceSingPacketConn) Upstream() any {
@@ -65,13 +53,9 @@ func (c *enhanceSingPacketConn) WriterReplaceable() bool {
 }
 
 func (c *enhanceSingPacketConn) ReaderReplaceable() bool {
-	return true
+	return false
 }
 
 func newEnhanceSingPacketConn(conn SingPacketConn) *enhanceSingPacketConn {
-	epc := &enhanceSingPacketConn{SingPacketConn: conn}
-	if readWaiter, isReadWaiter := bufio.CreatePacketReadWaiter(conn); isReadWaiter {
-		epc.packetReadWaiter = readWaiter
-	}
-	return epc
+	return &enhanceSingPacketConn{SingPacketConn: conn}
 }

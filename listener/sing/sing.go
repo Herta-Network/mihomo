@@ -11,6 +11,7 @@ import (
 
 	"github.com/metacubex/mihomo/adapter/inbound"
 	N "github.com/metacubex/mihomo/common/net"
+	P "github.com/metacubex/mihomo/common/net/packet"
 	"github.com/metacubex/mihomo/common/utils"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
@@ -157,36 +158,19 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 
 	connID := utils.NewUUIDV4().String() // make a new SNAT key
 
-	defer func() { _ = conn.Close() }()
 	mutex := sync.Mutex{}
 	writer := bufio.NewNetPacketWriter(conn) // a new interface to set nil in defer
+	reader := P.NewReader(conn, network.ReadWaitOptions{})
 	defer func() {
+		_ = conn.Close() // interrupt an in-flight WriteBack before waiting for it
+		reader.Close()
 		mutex.Lock() // this goroutine must exit after all conn.WritePacket() is not running
 		defer mutex.Unlock()
 		writer = nil
 	}()
-	rwOptions := network.ReadWaitOptions{}
-	readWaiter, isReadWaiter := bufio.CreatePacketReadWaiter(conn)
-	if isReadWaiter {
-		readWaiter.InitializeReadWaiter(rwOptions)
-	}
 	for {
-		var (
-			buff *buf.Buffer
-			dest M.Socksaddr
-			err  error
-		)
-		if isReadWaiter {
-			buff, dest, err = readWaiter.WaitReadPacket()
-		} else {
-			buff = rwOptions.NewPacketBuffer()
-			dest, err = conn.ReadPacket(buff)
-			if buff != nil {
-				rwOptions.PostReturn(buff)
-			}
-		}
+		buff, dest, err := reader.ReadPacket()
 		if err != nil {
-			buff.Release()
 			if ShouldIgnorePacketError(err) {
 				break
 			}

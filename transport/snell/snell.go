@@ -355,7 +355,8 @@ func UdpRequestHeaderLength(socks5Addr []byte) int {
 }
 
 func ReadPacket(r io.Reader, payload []byte) (net.Addr, int, error) {
-	buf := pool.Get(pool.UDPBufferSize)
+	// Read a complete protocol record even when the general UDP pool is smaller.
+	buf := pool.Get(maxLength)
 	defer pool.Put(buf)
 
 	n, err := r.Read(buf)

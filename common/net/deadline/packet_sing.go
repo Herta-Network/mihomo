@@ -1,6 +1,7 @@
 package deadline
 
 import (
+	"net"
 	"os"
 	"runtime"
 
@@ -46,6 +47,9 @@ type singPacketConn struct {
 }
 
 func (c *singPacketConn) ReadPacket(buffer *buf.Buffer) (destination M.Socksaddr, err error) {
+	if c.netPacketConn.isClosed() {
+		return M.Socksaddr{}, net.ErrClosed
+	}
 FOR:
 	for {
 		select {
@@ -54,21 +58,25 @@ FOR:
 				if result, ok := result.(*singReadResult); ok {
 					destination = result.destination
 					err = result.err
-					n, _ := buffer.Write(result.buffer.Bytes())
-					result.buffer.Advance(n)
-					if result.buffer.IsEmpty() {
+					if result.buffer != nil {
+						_, writeErr := buffer.Write(result.buffer.Bytes())
 						result.buffer.Release()
+						if err == nil {
+							err = writeErr
+						}
 					}
-					c.netPacketConn.resultCh <- nil // finish cache read
+					c.netPacketConn.publishResult(nil) // finish cache read
 					return
 				}
-				c.netPacketConn.resultCh <- result // another type of read
-				runtime.Gosched()                  // allowing other goroutines to run
+				c.netPacketConn.publishResult(result) // another type of read
+				runtime.Gosched()                     // allowing other goroutines to run
 				continue FOR
 			} else {
-				c.netPacketConn.resultCh <- nil
+				c.netPacketConn.publishResult(nil)
 				break FOR
 			}
+		case <-c.netPacketConn.done:
+			return M.Socksaddr{}, net.ErrClosed
 		case <-c.netPacketConn.pipeDeadline.Wait():
 			return M.Socksaddr{}, os.ErrDeadlineExceeded
 		}
@@ -83,7 +91,11 @@ FOR:
 		return
 	}
 
-	<-c.netPacketConn.resultCh
+	select {
+	case <-c.netPacketConn.done:
+		return M.Socksaddr{}, net.ErrClosed
+	case <-c.netPacketConn.resultCh:
+	}
 	go c.pipeReadPacket(buffer.FreeLen())
 
 	return c.ReadPacket(buffer)
@@ -92,10 +104,10 @@ FOR:
 func (c *singPacketConn) pipeReadPacket(pLen int) {
 	buffer := buf.NewSize(pLen)
 	destination, err := c.singPacketConn.ReadPacket(buffer)
-	result := &singReadResult{}
+	result := &singReadResult{buffer: buffer}
 	result.destination = destination
 	result.err = err
-	c.netPacketConn.resultCh <- result
+	c.netPacketConn.publishResult(result)
 }
 
 func (c *singPacketConn) WritePacket(buffer *buf.Buffer, destination M.Socksaddr) error {
@@ -127,6 +139,9 @@ func (c *singPacketReadWaiter) InitializeReadWaiter(options N.ReadWaitOptions) (
 }
 
 func (c *singPacketReadWaiter) WaitReadPacket() (buffer *buf.Buffer, destination M.Socksaddr, err error) {
+	if c.netPacketConn.isClosed() {
+		return nil, M.Socksaddr{}, net.ErrClosed
+	}
 FOR:
 	for {
 		select {
@@ -136,16 +151,18 @@ FOR:
 					buffer = result.buffer
 					destination = result.destination
 					err = result.err
-					c.netPacketConn.resultCh <- nil // finish cache read
+					c.netPacketConn.publishResult(nil) // finish cache read
 					return
 				}
-				c.netPacketConn.resultCh <- result // another type of read
-				runtime.Gosched()                  // allowing other goroutines to run
+				c.netPacketConn.publishResult(result) // another type of read
+				runtime.Gosched()                     // allowing other goroutines to run
 				continue FOR
 			} else {
-				c.netPacketConn.resultCh <- nil
+				c.netPacketConn.publishResult(nil)
 				break FOR
 			}
+		case <-c.netPacketConn.done:
+			return nil, M.Socksaddr{}, net.ErrClosed
 		case <-c.netPacketConn.pipeDeadline.Wait():
 			return nil, M.Socksaddr{}, os.ErrDeadlineExceeded
 		}
@@ -159,7 +176,11 @@ FOR:
 		return c.packetReadWaiter.WaitReadPacket()
 	}
 
-	<-c.netPacketConn.resultCh
+	select {
+	case <-c.netPacketConn.done:
+		return nil, M.Socksaddr{}, net.ErrClosed
+	case <-c.netPacketConn.resultCh:
+	}
 	go c.pipeWaitReadPacket()
 
 	return c.WaitReadPacket()
@@ -171,7 +192,7 @@ func (c *singPacketReadWaiter) pipeWaitReadPacket() {
 	result.buffer = buffer
 	result.destination = destination
 	result.err = err
-	c.netPacketConn.resultCh <- result
+	c.netPacketConn.publishResult(result)
 }
 
 func (c *singPacketReadWaiter) Upstream() any {
