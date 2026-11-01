@@ -20,9 +20,18 @@ func fragWriteNative(quicConn *quic.Conn, packet Packet, buf *bytes.Buffer, frag
 	fullPayload := packet.DATA
 	off := 0
 	fragID := uint8(0)
-	fragCount := uint8((len(fullPayload) + fragSize - 1) / fragSize) // round up
-	packet.FRAG_TOTAL = fragCount
-	for off < len(fullPayload) {
+	if fragSize <= 0 {
+		return &quic.DatagramTooLargeError{MaxDatagramPayloadSize: int64(fragSize)}
+	}
+	count := (len(fullPayload) + fragSize - 1) / fragSize
+	if count == 0 {
+		count = 1
+	}
+	if count > 255 {
+		return &quic.DatagramTooLargeError{MaxDatagramPayloadSize: int64(fragSize * 255)}
+	}
+	packet.FRAG_TOTAL = uint8(count)
+	for i := 0; i < count; i++ {
 		payloadSize := len(fullPayload) - off
 		if payloadSize > fragSize {
 			payloadSize = fragSize
@@ -101,9 +110,19 @@ func (d *deFragger) Feed(m *Packet) *Packet {
 	}
 
 	// all fragments received, assemble
-	var data []byte
+	size := 0
 	for _, frag := range bag.frags {
-		data = append(data, frag.DATA...)
+		size += len(frag.DATA)
+	}
+	if size > 65535 {
+		bag.frags = nil
+		d.lru.Delete(m.PKT_ID)
+		return nil
+	}
+	data := make([]byte, size)
+	offset := 0
+	for _, frag := range bag.frags {
+		offset += copy(data[offset:], frag.DATA)
 	}
 	p := *bag.frags[0] // recover from first fragment
 	p.SIZE = uint16(len(data))

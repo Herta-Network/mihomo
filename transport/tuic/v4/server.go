@@ -2,7 +2,6 @@ package v4
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"net"
 	"sync"
@@ -62,8 +61,7 @@ func (s *serverHandler) HandleTimeout() {
 }
 
 func (s *serverHandler) HandleMessage(message []byte) (err error) {
-	buffer := bytes.NewBuffer(message)
-	packet, err := ReadPacket(buffer)
+	packet, err := parsePacketBytes(message)
 	if err != nil {
 		return
 	}

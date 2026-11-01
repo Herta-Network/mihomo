@@ -2,9 +2,9 @@ package v4
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net"
 	"runtime"
 	"sync"
@@ -190,15 +190,14 @@ func (t *clientImpl) handleMessage(quicConn *quic.Conn) (err error) {
 					}
 				}
 			}()
-			reader := bytes.NewBuffer(message)
-			commandHead, err := ReadCommandHead(reader)
-			if err != nil {
-				return
+			if len(message) < 2 {
+				return io.ErrUnexpectedEOF
 			}
+			commandHead := CommandHead{VER: message[0], TYPE: CommandType(message[1])}
 			switch commandHead.TYPE {
 			case PacketType:
 				var packet Packet
-				packet, err = ReadPacketWithHead(commandHead, reader)
+				packet, err = parsePacketBytes(message)
 				if err != nil {
 					return
 				}

@@ -247,26 +247,14 @@ func ReadPacketWithHead(head CommandHead, reader BufferedReader) (c Packet, err 
 		err = fmt.Errorf("error command type: %s", c.CommandHead.TYPE)
 		return
 	}
-	err = binary.Read(reader, binary.BigEndian, &c.ASSOC_ID)
-	if err != nil {
+	var header [8]byte
+	if _, err = io.ReadFull(reader, header[:]); err != nil {
 		return
 	}
-	err = binary.Read(reader, binary.BigEndian, &c.PKT_ID)
-	if err != nil {
-		return
-	}
-	err = binary.Read(reader, binary.BigEndian, &c.FRAG_TOTAL)
-	if err != nil {
-		return
-	}
-	err = binary.Read(reader, binary.BigEndian, &c.FRAG_ID)
-	if err != nil {
-		return
-	}
-	err = binary.Read(reader, binary.BigEndian, &c.SIZE)
-	if err != nil {
-		return
-	}
+	c.ASSOC_ID = binary.BigEndian.Uint16(header[:2])
+	c.PKT_ID = binary.BigEndian.Uint16(header[2:4])
+	c.FRAG_TOTAL, c.FRAG_ID = header[4], header[5]
+	c.SIZE = binary.BigEndian.Uint16(header[6:])
 	c.ADDR, err = ReadAddress(reader)
 	if err != nil {
 		return
@@ -288,29 +276,16 @@ func ReadPacket(reader BufferedReader) (c Packet, err error) {
 }
 
 func (c Packet) WriteTo(writer BufferedWriter) (err error) {
-	err = c.CommandHead.WriteTo(writer)
-	if err != nil {
-		return
-	}
-	err = binary.Write(writer, binary.BigEndian, c.ASSOC_ID)
-	if err != nil {
-		return
-	}
-	err = binary.Write(writer, binary.BigEndian, c.PKT_ID)
-	if err != nil {
-		return
-	}
-	err = binary.Write(writer, binary.BigEndian, c.FRAG_TOTAL)
-	if err != nil {
-		return
-	}
-	err = binary.Write(writer, binary.BigEndian, c.FRAG_ID)
-	if err != nil {
-		return
-	}
-	err = binary.Write(writer, binary.BigEndian, c.SIZE)
-	if err != nil {
-		return
+	var header [10]byte
+	header[0], header[1] = c.VER, byte(c.TYPE)
+	binary.BigEndian.PutUint16(header[2:], c.ASSOC_ID)
+	binary.BigEndian.PutUint16(header[4:], c.PKT_ID)
+	header[6], header[7] = c.FRAG_TOTAL, c.FRAG_ID
+	binary.BigEndian.PutUint16(header[8:], c.SIZE)
+	if n, writeErr := writer.Write(header[:]); writeErr != nil {
+		return writeErr
+	} else if n != len(header) {
+		return io.ErrShortWrite
 	}
 	err = c.ADDR.WriteTo(writer)
 	if err != nil {

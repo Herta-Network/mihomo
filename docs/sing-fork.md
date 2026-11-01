@@ -1,8 +1,9 @@
 # sing fork integration
 
 `github.com/metacubex/sing` is replaced with the fixed Herta-Network revision
-`1d1b6994cf4aac99fe90d39831b8525233d744a1` in `go.mod`. This also selects the fork
-for MetaCubeX protocol dependencies that import that module path. The cronet-go, sing-snell, sing-vmess and sing-mux forks use this same module path. Their public
+`1260cbaedd252f9abb8d23576c862f64f50c0c98` in `go.mod`. This also selects the fork
+for MetaCubeX protocol dependencies that import that module path. The cronet-go, sing-snell, sing-vmess, sing-mux, smux and sing-quic forks use this
+same module path. Their public
 package paths remain unchanged, but their sources are selected with fixed fork
 replacements. There is no separate `github.com/sagernet/sing` in the production
 module graph, including `with_naive` builds.
@@ -10,11 +11,13 @@ No local checkout or moving branch is needed to build mihomo.
 
 | Module identity | Fixed source commit |
 | --- | --- |
-| `github.com/metacubex/sing` | Herta-Network/sing `1d1b6994cf4a` |
+| `github.com/metacubex/sing` | Herta-Network/sing `1260cbaedd25` |
 | `github.com/sagernet/cronet-go` | Herta-Network/cronet-go `511fbbf40a07` |
 | `github.com/sagernet/sing-snell` | Herta-Network/sing-snell `1fa24ee9ea84` |
-| `github.com/metacubex/sing-vmess` | Herta-Network/sing-vmess `83a9fdf3e38e` |
-| `github.com/metacubex/sing-mux` | Herta-Network/sing-mux `9a83d0dd7caa` |
+| `github.com/metacubex/sing-vmess` | Herta-Network/sing-vmess `7cef310d10c4` |
+| `github.com/metacubex/sing-mux` | Herta-Network/sing-mux `d06b28e91440` |
+| `github.com/metacubex/smux` | Herta-Network/smux `10aa72a7535c` |
+| `github.com/metacubex/sing-quic` | Herta-Network/sing-quic `9d7d4312a27b` |
 
 ## Data paths
 
@@ -192,6 +195,22 @@ retain one producer buffer allocation per packet; large XUDP frames still need
 chunk workspaces, and generic opaque batch joining still copies output bytes.
 [Configuration and GEO concurrency](concurrency-lifecycle.md) describes the
 separate lifecycle fixes and their regression coverage.
+
+## Receive and native packet follow-up
+
+XUDP transfers received datagrams through bounded owned queues and encodes
+reply headers in place. Sing-mux shares packet framing state across scalar and
+owned reads; smux reuses scheduler nodes, receive descriptors and socket write
+vectors. Large `ChunkWriter` inputs retain ownership through independent chunks
+and reuse the original buffer for the final chunk. Public buffer descriptors
+remain unpooled to preserve their reference and release contracts.
+
+Hysteria2 reuses its fragment wire workspace. TUIC native datagrams use checked
+byte parsing, exact-sized reassembly and association-scoped fragment IDs.
+The [receive/native packet report](benchmarks/protocol-receive-native-2026-11-01.md)
+records allocation changes, p95/p99 observations, failed baseline trials and the
+existing XHTTP concurrent-test limitation. It does not claim uniform throughput
+or tail-latency improvement.
 
 ## Regression checks
 

@@ -12,13 +12,14 @@ import (
 	"github.com/metacubex/mihomo/transport/tuic/types"
 
 	"github.com/metacubex/quic-go"
-	"github.com/metacubex/randv2"
 )
 
 type quicStreamPacketConn struct {
-	connId    uint16
-	quicConn  *quic.Conn
-	inputConn *N.BufferedConn
+	packetID       atomic.Uint32
+	sharedPacketID *atomic.Uint32
+	connId         uint16
+	quicConn       *quic.Conn
+	inputConn      *N.BufferedConn
 
 	udpRelayMode          types.UdpRelayMode
 	maxUdpRelayPacketSize int
@@ -134,6 +135,16 @@ func (q *quicStreamPacketConn) WaitReadFrom() (data []byte, put func(), addr net
 	return
 }
 
+// A random 16-bit ID can collide while two fragmented datagrams are in
+// flight. Keep one monotonic sequence per UDP association, including replies
+// written through distinct server packet wrappers.
+func (q *quicStreamPacketConn) nextPacketID() uint16 {
+	if q.sharedPacketID != nil {
+		return uint16(q.sharedPacketID.Add(1))
+	}
+	return uint16(q.packetID.Add(1))
+}
+
 func (q *quicStreamPacketConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 	if len(p) > 0xffff { // uint16 max
 		return 0, &quic.DatagramTooLargeError{MaxDatagramPayloadSize: 0xffff}
@@ -156,7 +167,7 @@ func (q *quicStreamPacketConn) WriteTo(p []byte, addr net.Addr) (n int, err erro
 	if err != nil {
 		return
 	}
-	pktId := uint16(randv2.Uint32())
+	pktId := q.nextPacketID()
 	packet := NewPacket(q.connId, pktId, 1, 0, uint16(len(p)), address, p)
 	switch q.udpRelayMode {
 	case types.QUIC:

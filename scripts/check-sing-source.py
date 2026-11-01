@@ -14,6 +14,8 @@ FIXED_FORKS = {
     "github.com/sagernet/sing-snell": "github.com/Herta-Network/sing-snell",
     "github.com/metacubex/sing-vmess": "github.com/Herta-Network/sing-vmess",
     "github.com/metacubex/sing-mux": "github.com/Herta-Network/sing-mux",
+    "github.com/metacubex/smux": "github.com/Herta-Network/smux",
+    "github.com/metacubex/sing-quic": "github.com/Herta-Network/sing-quic",
 }
 
 

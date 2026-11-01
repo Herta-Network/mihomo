@@ -228,14 +228,12 @@ func ReadPacketWithHead(head CommandHead, reader BufferedReader) (c Packet, err 
 		err = fmt.Errorf("error command type: %s", c.CommandHead.TYPE)
 		return
 	}
-	err = binary.Read(reader, binary.BigEndian, &c.ASSOC_ID)
-	if err != nil {
+	var header [6]byte
+	if _, err = io.ReadFull(reader, header[:]); err != nil {
 		return
 	}
-	err = binary.Read(reader, binary.BigEndian, &c.LEN)
-	if err != nil {
-		return
-	}
+	c.ASSOC_ID = binary.BigEndian.Uint32(header[:4])
+	c.LEN = binary.BigEndian.Uint16(header[4:])
 	c.ADDR, err = ReadAddress(reader)
 	if err != nil {
 		return
@@ -257,17 +255,14 @@ func ReadPacket(reader BufferedReader) (c Packet, err error) {
 }
 
 func (c Packet) WriteTo(writer BufferedWriter) (err error) {
-	err = c.CommandHead.WriteTo(writer)
-	if err != nil {
-		return
-	}
-	err = binary.Write(writer, binary.BigEndian, c.ASSOC_ID)
-	if err != nil {
-		return
-	}
-	err = binary.Write(writer, binary.BigEndian, c.LEN)
-	if err != nil {
-		return
+	var header [8]byte
+	header[0], header[1] = c.VER, byte(c.TYPE)
+	binary.BigEndian.PutUint32(header[2:], c.ASSOC_ID)
+	binary.BigEndian.PutUint16(header[6:], c.LEN)
+	if n, writeErr := writer.Write(header[:]); writeErr != nil {
+		return writeErr
+	} else if n != len(header) {
+		return io.ErrShortWrite
 	}
 	err = c.ADDR.WriteTo(writer)
 	if err != nil {

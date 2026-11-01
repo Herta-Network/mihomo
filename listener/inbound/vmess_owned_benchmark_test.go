@@ -5,6 +5,7 @@ import (
 	"context"
 	"net"
 	"net/netip"
+	"sort"
 	"testing"
 	"time"
 
@@ -132,11 +133,18 @@ func BenchmarkVMessOwnedRoundTrip(b *testing.B) {
 			roundTrip()
 			b.ReportAllocs()
 			b.SetBytes(4 * 1200)
+			samples := make([]int64, b.N)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
+				start := time.Now()
 				roundTrip()
+				samples[i] = time.Since(start).Nanoseconds()
 			}
 			b.StopTimer()
+			sort.Slice(samples, func(i, j int) bool { return samples[i] < samples[j] })
+			b.ReportMetric(float64(samples[(len(samples)-1)*50/100]), "p50-ns")
+			b.ReportMetric(float64(samples[(len(samples)-1)*95/100]), "p95-ns")
+			b.ReportMetric(float64(samples[(len(samples)-1)*99/100]), "p99-ns")
 			upload, download := manager.Total()
 			if want := int64(b.N+1) * 4 * 1200; upload != want || download != want {
 				b.Fatalf("upload=%d download=%d want=%d", upload, download, want)

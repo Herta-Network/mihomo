@@ -2,8 +2,8 @@ package v5
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 
@@ -62,22 +62,21 @@ func (s *serverHandler) HandleTimeout() {
 }
 
 func (s *serverHandler) HandleMessage(message []byte) (err error) {
-	reader := bytes.NewBuffer(message)
-	commandHead, err := ReadCommandHead(reader)
-	if err != nil {
-		return
+	if len(message) < 2 {
+		return io.ErrUnexpectedEOF
 	}
+	commandHead := CommandHead{VER: message[0], TYPE: CommandType(message[1])}
 	switch commandHead.TYPE {
 	case PacketType:
 		var packet Packet
-		packet, err = ReadPacketWithHead(commandHead, reader)
+		packet, err = parsePacketBytes(message)
 		if err != nil {
 			return
 		}
 		return s.parsePacket(&packet, types.NATIVE)
 	case HeartbeatType:
 		var heartbeat Heartbeat
-		heartbeat, err = ReadHeartbeatWithHead(commandHead, reader)
+		heartbeat, err = ReadHeartbeatWithHead(commandHead, nil)
 		if err != nil {
 			return
 		}
@@ -105,6 +104,7 @@ func (s *serverHandler) parsePacket(packet *Packet, udpRelayMode types.UdpRelayM
 	}
 
 	pc := &quicStreamPacketConn{
+		sharedPacketID:        &input.packetID,
 		connId:                assocId,
 		quicConn:              s.quicConn,
 		inputConn:             nil,
@@ -195,6 +195,7 @@ func (s *serverHandler) HandleUniStream(reader *bufio.Reader) (err error) {
 }
 
 type serverUDPInput struct {
+	packetID    atomic.Uint32
 	writeClosed atomic.Bool
 	deFragger
 }

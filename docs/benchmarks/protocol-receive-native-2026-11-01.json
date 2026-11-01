@@ -1,0 +1,882 @@
+{
+  "machine": "Apple M5, macOS arm64",
+  "go": "1.27.3",
+  "GOMAXPROCS": 2,
+  "status": "committed source with immutable remote dependency pins; measurements collected in an isolated development workspace",
+  "baseline": {
+    "mihomo": "b50c68e4960526f6591212723f1dc1e39ee99993",
+    "sing": "1d1b6994cf4aac99fe90d39831b8525233d744a1",
+    "sing-vmess": "83a9fdf3e38e61efe2bdefad7aa6c5b6532013ab",
+    "sing-mux": "9a83d0dd7caa8eba1ce0e05ef33cb97a5b095833",
+    "smux": "d0c8756d3141ce2c9aa1046df6a93985441c6033",
+    "sing-quic": "1c242664697a441b01cfaf67bdbb7bb0d532745e"
+  },
+  "measurement_notes": [
+    "Binaries built before serial measurement; this task launched no other build or tests during the final loop.",
+    "A shared workstation; no production throughput or latency guarantee.",
+    "Native TUIC v5 baseline trial 3 timed out and has no numeric sample. It remains in the raw trials; its summary uses the two completed trials.",
+    "Earlier pre-ID-fix TUIC v5 timeout is also retained.",
+    "Microbenchmarks below used the default GOMAXPROCS=10, not the loopback setting."
+  ],
+  "trials": [
+    {
+      "case": "xudp",
+      "side": "before",
+      "trial": 1,
+      "iterations": 10000,
+      "exit_code": 0,
+      "seconds": 0.5401840209960938,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkVMessOwnedRoundTrip/xudp-2         \t   10000\t     47831 ns/op\t 100.35 MB/s\t     45959 p50-ns\t     64542 p95-ns\t     86459 p99-ns\t    6547 B/op\t     224 allocs/op\nPASS\n"
+    },
+    {
+      "case": "xudp",
+      "side": "after",
+      "trial": 1,
+      "iterations": 10000,
+      "exit_code": 0,
+      "seconds": 3.9967119693756104,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkVMessOwnedRoundTrip/xudp-2         \t   10000\t     44604 ns/op\t 107.61 MB/s\t     42416 p50-ns\t     63209 p95-ns\t     91375 p99-ns\t    5092 B/op\t     100 allocs/op\nPASS\n"
+    },
+    {
+      "case": "native",
+      "side": "before",
+      "trial": 1,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 1.9230170249938965,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/hysteria2-2         \t    5000\t    132336 ns/op\t  36.27 MB/s\t    124834 p50-ns\t    204542 p95-ns\t    268625 p99-ns\t   55517 B/op\t     753 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2           \t    5000\t     99271 ns/op\t  48.35 MB/s\t     90625 p50-ns\t    166708 p95-ns\t    232000 p99-ns\t   57610 B/op\t     376 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2           \t    5000\t    146389 ns/op\t  32.79 MB/s\t    135750 p50-ns\t    237208 p95-ns\t    298166 p99-ns\t   78028 B/op\t     801 allocs/op\nPASS\n"
+    },
+    {
+      "case": "native",
+      "side": "after",
+      "trial": 1,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 2.3119518756866455,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/hysteria2-2         \t    5000\t    126935 ns/op\t  37.81 MB/s\t    120458 p50-ns\t    187917 p95-ns\t    260709 p99-ns\t   50257 B/op\t     493 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2           \t    5000\t     96765 ns/op\t  49.60 MB/s\t     89042 p50-ns\t    159083 p95-ns\t    220500 p99-ns\t   46903 B/op\t     316 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2           \t    5000\t    234152 ns/op\t  20.50 MB/s\t    168208 p50-ns\t    391292 p95-ns\t    742417 p99-ns\t   66606 B/op\t     571 allocs/op\nPASS\n"
+    },
+    {
+      "case": "mux",
+      "side": "before",
+      "trial": 1,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 1.3861839771270752,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing-mux\ncpu: Apple M5\nBenchmarkPacketTCPRoundTrip/h2mux/batch=1-2         \t    5000\t     45680 ns/op\t  26.27 MB/s\t     74750 p95-ns\t    239459 p99-ns\t     338 B/op\t      14 allocs/op\nBenchmarkPacketTCPRoundTrip/h2mux/batch=8-2         \t    5000\t     73499 ns/op\t 130.61 MB/s\t     86083 p95-ns\t    163500 p99-ns\t    2337 B/op\t     111 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=1-2          \t    5000\t     23197 ns/op\t  51.73 MB/s\t     29584 p95-ns\t     35292 p99-ns\t    1472 B/op\t      42 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=8-2          \t    5000\t     49264 ns/op\t 194.87 MB/s\t     57583 p95-ns\t     63792 p99-ns\t    7375 B/op\t     219 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=1-2         \t    5000\t     22024 ns/op\t  54.49 MB/s\t     28542 p95-ns\t     32916 p99-ns\t     153 B/op\t      10 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=8-2         \t    5000\t     38535 ns/op\t 249.12 MB/s\t     44500 p95-ns\t     48375 p99-ns\t    1222 B/op\t      80 allocs/op\nPASS\n"
+    },
+    {
+      "case": "mux",
+      "side": "after",
+      "trial": 1,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 1.2617011070251465,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing-mux\ncpu: Apple M5\nBenchmarkPacketTCPRoundTrip/h2mux/batch=1-2         \t    5000\t     27583 ns/op\t  43.50 MB/s\t     38042 p95-ns\t     45667 p99-ns\t     319 B/op\t       6 allocs/op\nBenchmarkPacketTCPRoundTrip/h2mux/batch=8-2         \t    5000\t     69617 ns/op\t 137.90 MB/s\t     79250 p95-ns\t     85417 p99-ns\t    2148 B/op\t      47 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=1-2          \t    5000\t     21007 ns/op\t  57.12 MB/s\t     27125 p95-ns\t     31917 p99-ns\t     449 B/op\t       8 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=8-2          \t    5000\t     48104 ns/op\t 199.57 MB/s\t     56875 p95-ns\t     63250 p99-ns\t    2789 B/op\t      48 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=1-2         \t    5000\t     20825 ns/op\t  57.62 MB/s\t     27333 p95-ns\t     31333 p99-ns\t     129 B/op\t       2 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=8-2         \t    5000\t     38660 ns/op\t 248.32 MB/s\t     45208 p95-ns\t     49750 p99-ns\t    1036 B/op\t      16 allocs/op\nPASS\n"
+    },
+    {
+      "case": "xudp",
+      "side": "before",
+      "trial": 2,
+      "iterations": 10000,
+      "exit_code": 0,
+      "seconds": 0.4667847156524658,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkVMessOwnedRoundTrip/xudp-2         \t   10000\t     45575 ns/op\t 105.32 MB/s\t     44458 p50-ns\t     54333 p95-ns\t     66708 p99-ns\t    6568 B/op\t     224 allocs/op\nPASS\n"
+    },
+    {
+      "case": "xudp",
+      "side": "after",
+      "trial": 2,
+      "iterations": 10000,
+      "exit_code": 0,
+      "seconds": 0.4298379421234131,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkVMessOwnedRoundTrip/xudp-2         \t   10000\t     41884 ns/op\t 114.60 MB/s\t     41083 p50-ns\t     50000 p95-ns\t     58167 p99-ns\t    5091 B/op\t     100 allocs/op\nPASS\n"
+    },
+    {
+      "case": "native",
+      "side": "before",
+      "trial": 2,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 3.413274049758911,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/hysteria2-2         \t    5000\t    161106 ns/op\t  29.79 MB/s\t    125042 p50-ns\t    303250 p95-ns\t    860000 p99-ns\t   55467 B/op\t     751 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2           \t    5000\t    272424 ns/op\t  17.62 MB/s\t    186750 p50-ns\t    606291 p95-ns\t   1963625 p99-ns\t   57542 B/op\t     373 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2           \t    5000\t    243306 ns/op\t  19.73 MB/s\t    228042 p50-ns\t    416833 p95-ns\t    619458 p99-ns\t   77964 B/op\t     797 allocs/op\nPASS\n"
+    },
+    {
+      "case": "native",
+      "side": "after",
+      "trial": 2,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 1.8491811752319336,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/hysteria2-2         \t    5000\t    127596 ns/op\t  37.62 MB/s\t    117166 p50-ns\t    201750 p95-ns\t    273375 p99-ns\t   50179 B/op\t     491 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2           \t    5000\t     95520 ns/op\t  50.25 MB/s\t     88417 p50-ns\t    152792 p95-ns\t    215208 p99-ns\t   46905 B/op\t     317 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2           \t    5000\t    142210 ns/op\t  33.75 MB/s\t    133334 p50-ns\t    224292 p95-ns\t    286792 p99-ns\t   66713 B/op\t     577 allocs/op\nPASS\n"
+    },
+    {
+      "case": "mux",
+      "side": "before",
+      "trial": 2,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 1.2271101474761963,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing-mux\ncpu: Apple M5\nBenchmarkPacketTCPRoundTrip/h2mux/batch=1-2         \t    5000\t     26236 ns/op\t  45.74 MB/s\t     32667 p95-ns\t     36917 p99-ns\t     344 B/op\t      14 allocs/op\nBenchmarkPacketTCPRoundTrip/h2mux/batch=8-2         \t    5000\t     81111 ns/op\t 118.36 MB/s\t    109125 p95-ns\t    136708 p99-ns\t    2332 B/op\t     111 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=1-2          \t    5000\t     24642 ns/op\t  48.70 MB/s\t     31208 p95-ns\t     35875 p99-ns\t    1472 B/op\t      42 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=8-2          \t    5000\t     49951 ns/op\t 192.19 MB/s\t     58750 p95-ns\t     66334 p99-ns\t    7356 B/op\t     219 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=1-2         \t    5000\t     21623 ns/op\t  55.50 MB/s\t     28083 p95-ns\t     33583 p99-ns\t     153 B/op\t      10 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=8-2         \t    5000\t     39536 ns/op\t 242.82 MB/s\t     47875 p95-ns\t     59875 p99-ns\t    1224 B/op\t      80 allocs/op\nPASS\n"
+    },
+    {
+      "case": "mux",
+      "side": "after",
+      "trial": 2,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 1.2379541397094727,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing-mux\ncpu: Apple M5\nBenchmarkPacketTCPRoundTrip/h2mux/batch=1-2         \t    5000\t     39134 ns/op\t  30.66 MB/s\t     74708 p95-ns\t     88791 p99-ns\t     318 B/op\t       6 allocs/op\nBenchmarkPacketTCPRoundTrip/h2mux/batch=8-2         \t    5000\t     74449 ns/op\t 128.95 MB/s\t     85000 p95-ns\t     95458 p99-ns\t    2148 B/op\t      47 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=1-2          \t    5000\t     21956 ns/op\t  54.65 MB/s\t     28792 p95-ns\t     34916 p99-ns\t     448 B/op\t       8 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=8-2          \t    5000\t     48265 ns/op\t 198.90 MB/s\t     57083 p95-ns\t     65541 p99-ns\t    2786 B/op\t      48 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=1-2         \t    5000\t     22519 ns/op\t  53.29 MB/s\t     30292 p95-ns\t     46542 p99-ns\t     129 B/op\t       2 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=8-2         \t    5000\t     38711 ns/op\t 247.99 MB/s\t     45667 p95-ns\t     51750 p99-ns\t    1033 B/op\t      16 allocs/op\nPASS\n"
+    },
+    {
+      "case": "xudp",
+      "side": "before",
+      "trial": 3,
+      "iterations": 10000,
+      "exit_code": 0,
+      "seconds": 0.4774770736694336,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkVMessOwnedRoundTrip/xudp-2         \t   10000\t     46670 ns/op\t 102.85 MB/s\t     45542 p50-ns\t     56125 p95-ns\t     73125 p99-ns\t    6574 B/op\t     224 allocs/op\nPASS\n"
+    },
+    {
+      "case": "xudp",
+      "side": "after",
+      "trial": 3,
+      "iterations": 10000,
+      "exit_code": 0,
+      "seconds": 0.43665528297424316,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkVMessOwnedRoundTrip/xudp-2         \t   10000\t     42539 ns/op\t 112.84 MB/s\t     41625 p50-ns\t     51125 p95-ns\t     61167 p99-ns\t    5091 B/op\t     100 allocs/op\nPASS\n"
+    },
+    {
+      "case": "native",
+      "side": "before",
+      "trial": 3,
+      "iterations": 5000,
+      "exit_code": 1,
+      "seconds": 11.9063880443573,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/hysteria2-2         \t    5000\t    132451 ns/op\t  36.24 MB/s\t    123416 p50-ns\t    205833 p95-ns\t    268208 p99-ns\t   55476 B/op\t     752 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2           \t    5000\t    103404 ns/op\t  46.42 MB/s\t     90875 p50-ns\t    182042 p95-ns\t    252083 p99-ns\t   57604 B/op\t     376 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2           \t--- FAIL: BenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2\n    native_quic_benchmark_test.go:133: i/o timeout\n--- FAIL: BenchmarkNativeQUICOwnedRoundTrip\nFAIL\n"
+    },
+    {
+      "case": "native",
+      "side": "after",
+      "trial": 3,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 1.8668620586395264,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/hysteria2-2         \t    5000\t    127369 ns/op\t  37.69 MB/s\t    119250 p50-ns\t    196791 p95-ns\t    259958 p99-ns\t   50205 B/op\t     492 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2           \t    5000\t     95896 ns/op\t  50.05 MB/s\t     89167 p50-ns\t    154125 p95-ns\t    210709 p99-ns\t   46901 B/op\t     316 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2           \t    5000\t    142514 ns/op\t  33.68 MB/s\t    133000 p50-ns\t    228458 p95-ns\t    296459 p99-ns\t   66703 B/op\t     577 allocs/op\nPASS\n"
+    },
+    {
+      "case": "mux",
+      "side": "before",
+      "trial": 3,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 1.1754350662231445,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing-mux\ncpu: Apple M5\nBenchmarkPacketTCPRoundTrip/h2mux/batch=1-2         \t    5000\t     26813 ns/op\t  44.75 MB/s\t     34042 p95-ns\t     40500 p99-ns\t     341 B/op\t      14 allocs/op\nBenchmarkPacketTCPRoundTrip/h2mux/batch=8-2         \t    5000\t     70216 ns/op\t 136.72 MB/s\t     80375 p95-ns\t     91125 p99-ns\t    2336 B/op\t     111 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=1-2          \t    5000\t     24229 ns/op\t  49.53 MB/s\t     31541 p95-ns\t     41250 p99-ns\t    1474 B/op\t      42 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=8-2          \t    5000\t     50441 ns/op\t 190.32 MB/s\t     59708 p95-ns\t     73709 p99-ns\t    7377 B/op\t     219 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=1-2         \t    5000\t     21841 ns/op\t  54.94 MB/s\t     29416 p95-ns\t     37833 p99-ns\t     153 B/op\t      10 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=8-2         \t    5000\t     39158 ns/op\t 245.16 MB/s\t     47167 p95-ns\t     59667 p99-ns\t    1224 B/op\t      80 allocs/op\nPASS\n"
+    },
+    {
+      "case": "mux",
+      "side": "after",
+      "trial": 3,
+      "iterations": 5000,
+      "exit_code": 0,
+      "seconds": 1.1561579704284668,
+      "output": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing-mux\ncpu: Apple M5\nBenchmarkPacketTCPRoundTrip/h2mux/batch=1-2         \t    5000\t     26505 ns/op\t  45.28 MB/s\t     33750 p95-ns\t     40916 p99-ns\t     318 B/op\t       6 allocs/op\nBenchmarkPacketTCPRoundTrip/h2mux/batch=8-2         \t    5000\t     70707 ns/op\t 135.77 MB/s\t     82125 p95-ns\t    102792 p99-ns\t    2145 B/op\t      47 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=1-2          \t    5000\t     22138 ns/op\t  54.21 MB/s\t     29500 p95-ns\t     38792 p99-ns\t     449 B/op\t       8 allocs/op\nBenchmarkPacketTCPRoundTrip/smux/batch=8-2          \t    5000\t     48873 ns/op\t 196.43 MB/s\t     59250 p95-ns\t     72750 p99-ns\t    2790 B/op\t      48 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=1-2         \t    5000\t     21851 ns/op\t  54.92 MB/s\t     28750 p95-ns\t     36375 p99-ns\t     129 B/op\t       2 allocs/op\nBenchmarkPacketTCPRoundTrip/yamux/batch=8-2         \t    5000\t     38761 ns/op\t 247.67 MB/s\t     45667 p95-ns\t     52000 p99-ns\t    1033 B/op\t      16 allocs/op\nPASS\n"
+    }
+  ],
+  "samples": {
+    "BenchmarkVMessOwnedRoundTrip/xudp-2": {
+      "before": [
+        {
+          "n": 10000,
+          "ns/op": 47831.0,
+          "MB/s": 100.35,
+          "p50-ns": 45959.0,
+          "p95-ns": 64542.0,
+          "p99-ns": 86459.0,
+          "B/op": 6547.0,
+          "allocs/op": 224.0
+        },
+        {
+          "n": 10000,
+          "ns/op": 45575.0,
+          "MB/s": 105.32,
+          "p50-ns": 44458.0,
+          "p95-ns": 54333.0,
+          "p99-ns": 66708.0,
+          "B/op": 6568.0,
+          "allocs/op": 224.0
+        },
+        {
+          "n": 10000,
+          "ns/op": 46670.0,
+          "MB/s": 102.85,
+          "p50-ns": 45542.0,
+          "p95-ns": 56125.0,
+          "p99-ns": 73125.0,
+          "B/op": 6574.0,
+          "allocs/op": 224.0
+        }
+      ],
+      "after": [
+        {
+          "n": 10000,
+          "ns/op": 44604.0,
+          "MB/s": 107.61,
+          "p50-ns": 42416.0,
+          "p95-ns": 63209.0,
+          "p99-ns": 91375.0,
+          "B/op": 5092.0,
+          "allocs/op": 100.0
+        },
+        {
+          "n": 10000,
+          "ns/op": 41884.0,
+          "MB/s": 114.6,
+          "p50-ns": 41083.0,
+          "p95-ns": 50000.0,
+          "p99-ns": 58167.0,
+          "B/op": 5091.0,
+          "allocs/op": 100.0
+        },
+        {
+          "n": 10000,
+          "ns/op": 42539.0,
+          "MB/s": 112.84,
+          "p50-ns": 41625.0,
+          "p95-ns": 51125.0,
+          "p99-ns": 61167.0,
+          "B/op": 5091.0,
+          "allocs/op": 100.0
+        }
+      ]
+    },
+    "BenchmarkNativeQUICOwnedRoundTrip/hysteria2-2": {
+      "before": [
+        {
+          "n": 5000,
+          "ns/op": 132336.0,
+          "MB/s": 36.27,
+          "p50-ns": 124834.0,
+          "p95-ns": 204542.0,
+          "p99-ns": 268625.0,
+          "B/op": 55517.0,
+          "allocs/op": 753.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 161106.0,
+          "MB/s": 29.79,
+          "p50-ns": 125042.0,
+          "p95-ns": 303250.0,
+          "p99-ns": 860000.0,
+          "B/op": 55467.0,
+          "allocs/op": 751.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 132451.0,
+          "MB/s": 36.24,
+          "p50-ns": 123416.0,
+          "p95-ns": 205833.0,
+          "p99-ns": 268208.0,
+          "B/op": 55476.0,
+          "allocs/op": 752.0
+        }
+      ],
+      "after": [
+        {
+          "n": 5000,
+          "ns/op": 126935.0,
+          "MB/s": 37.81,
+          "p50-ns": 120458.0,
+          "p95-ns": 187917.0,
+          "p99-ns": 260709.0,
+          "B/op": 50257.0,
+          "allocs/op": 493.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 127596.0,
+          "MB/s": 37.62,
+          "p50-ns": 117166.0,
+          "p95-ns": 201750.0,
+          "p99-ns": 273375.0,
+          "B/op": 50179.0,
+          "allocs/op": 491.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 127369.0,
+          "MB/s": 37.69,
+          "p50-ns": 119250.0,
+          "p95-ns": 196791.0,
+          "p99-ns": 259958.0,
+          "B/op": 50205.0,
+          "allocs/op": 492.0
+        }
+      ]
+    },
+    "BenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2": {
+      "before": [
+        {
+          "n": 5000,
+          "ns/op": 99271.0,
+          "MB/s": 48.35,
+          "p50-ns": 90625.0,
+          "p95-ns": 166708.0,
+          "p99-ns": 232000.0,
+          "B/op": 57610.0,
+          "allocs/op": 376.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 272424.0,
+          "MB/s": 17.62,
+          "p50-ns": 186750.0,
+          "p95-ns": 606291.0,
+          "p99-ns": 1963625.0,
+          "B/op": 57542.0,
+          "allocs/op": 373.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 103404.0,
+          "MB/s": 46.42,
+          "p50-ns": 90875.0,
+          "p95-ns": 182042.0,
+          "p99-ns": 252083.0,
+          "B/op": 57604.0,
+          "allocs/op": 376.0
+        }
+      ],
+      "after": [
+        {
+          "n": 5000,
+          "ns/op": 96765.0,
+          "MB/s": 49.6,
+          "p50-ns": 89042.0,
+          "p95-ns": 159083.0,
+          "p99-ns": 220500.0,
+          "B/op": 46903.0,
+          "allocs/op": 316.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 95520.0,
+          "MB/s": 50.25,
+          "p50-ns": 88417.0,
+          "p95-ns": 152792.0,
+          "p99-ns": 215208.0,
+          "B/op": 46905.0,
+          "allocs/op": 317.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 95896.0,
+          "MB/s": 50.05,
+          "p50-ns": 89167.0,
+          "p95-ns": 154125.0,
+          "p99-ns": 210709.0,
+          "B/op": 46901.0,
+          "allocs/op": 316.0
+        }
+      ]
+    },
+    "BenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2": {
+      "before": [
+        {
+          "n": 5000,
+          "ns/op": 146389.0,
+          "MB/s": 32.79,
+          "p50-ns": 135750.0,
+          "p95-ns": 237208.0,
+          "p99-ns": 298166.0,
+          "B/op": 78028.0,
+          "allocs/op": 801.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 243306.0,
+          "MB/s": 19.73,
+          "p50-ns": 228042.0,
+          "p95-ns": 416833.0,
+          "p99-ns": 619458.0,
+          "B/op": 77964.0,
+          "allocs/op": 797.0
+        }
+      ],
+      "after": [
+        {
+          "n": 5000,
+          "ns/op": 234152.0,
+          "MB/s": 20.5,
+          "p50-ns": 168208.0,
+          "p95-ns": 391292.0,
+          "p99-ns": 742417.0,
+          "B/op": 66606.0,
+          "allocs/op": 571.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 142210.0,
+          "MB/s": 33.75,
+          "p50-ns": 133334.0,
+          "p95-ns": 224292.0,
+          "p99-ns": 286792.0,
+          "B/op": 66713.0,
+          "allocs/op": 577.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 142514.0,
+          "MB/s": 33.68,
+          "p50-ns": 133000.0,
+          "p95-ns": 228458.0,
+          "p99-ns": 296459.0,
+          "B/op": 66703.0,
+          "allocs/op": 577.0
+        }
+      ]
+    },
+    "BenchmarkPacketTCPRoundTrip/h2mux/batch=1-2": {
+      "before": [
+        {
+          "n": 5000,
+          "ns/op": 45680.0,
+          "MB/s": 26.27,
+          "p95-ns": 74750.0,
+          "p99-ns": 239459.0,
+          "B/op": 338.0,
+          "allocs/op": 14.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 26236.0,
+          "MB/s": 45.74,
+          "p95-ns": 32667.0,
+          "p99-ns": 36917.0,
+          "B/op": 344.0,
+          "allocs/op": 14.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 26813.0,
+          "MB/s": 44.75,
+          "p95-ns": 34042.0,
+          "p99-ns": 40500.0,
+          "B/op": 341.0,
+          "allocs/op": 14.0
+        }
+      ],
+      "after": [
+        {
+          "n": 5000,
+          "ns/op": 27583.0,
+          "MB/s": 43.5,
+          "p95-ns": 38042.0,
+          "p99-ns": 45667.0,
+          "B/op": 319.0,
+          "allocs/op": 6.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 39134.0,
+          "MB/s": 30.66,
+          "p95-ns": 74708.0,
+          "p99-ns": 88791.0,
+          "B/op": 318.0,
+          "allocs/op": 6.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 26505.0,
+          "MB/s": 45.28,
+          "p95-ns": 33750.0,
+          "p99-ns": 40916.0,
+          "B/op": 318.0,
+          "allocs/op": 6.0
+        }
+      ]
+    },
+    "BenchmarkPacketTCPRoundTrip/h2mux/batch=8-2": {
+      "before": [
+        {
+          "n": 5000,
+          "ns/op": 73499.0,
+          "MB/s": 130.61,
+          "p95-ns": 86083.0,
+          "p99-ns": 163500.0,
+          "B/op": 2337.0,
+          "allocs/op": 111.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 81111.0,
+          "MB/s": 118.36,
+          "p95-ns": 109125.0,
+          "p99-ns": 136708.0,
+          "B/op": 2332.0,
+          "allocs/op": 111.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 70216.0,
+          "MB/s": 136.72,
+          "p95-ns": 80375.0,
+          "p99-ns": 91125.0,
+          "B/op": 2336.0,
+          "allocs/op": 111.0
+        }
+      ],
+      "after": [
+        {
+          "n": 5000,
+          "ns/op": 69617.0,
+          "MB/s": 137.9,
+          "p95-ns": 79250.0,
+          "p99-ns": 85417.0,
+          "B/op": 2148.0,
+          "allocs/op": 47.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 74449.0,
+          "MB/s": 128.95,
+          "p95-ns": 85000.0,
+          "p99-ns": 95458.0,
+          "B/op": 2148.0,
+          "allocs/op": 47.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 70707.0,
+          "MB/s": 135.77,
+          "p95-ns": 82125.0,
+          "p99-ns": 102792.0,
+          "B/op": 2145.0,
+          "allocs/op": 47.0
+        }
+      ]
+    },
+    "BenchmarkPacketTCPRoundTrip/smux/batch=1-2": {
+      "before": [
+        {
+          "n": 5000,
+          "ns/op": 23197.0,
+          "MB/s": 51.73,
+          "p95-ns": 29584.0,
+          "p99-ns": 35292.0,
+          "B/op": 1472.0,
+          "allocs/op": 42.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 24642.0,
+          "MB/s": 48.7,
+          "p95-ns": 31208.0,
+          "p99-ns": 35875.0,
+          "B/op": 1472.0,
+          "allocs/op": 42.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 24229.0,
+          "MB/s": 49.53,
+          "p95-ns": 31541.0,
+          "p99-ns": 41250.0,
+          "B/op": 1474.0,
+          "allocs/op": 42.0
+        }
+      ],
+      "after": [
+        {
+          "n": 5000,
+          "ns/op": 21007.0,
+          "MB/s": 57.12,
+          "p95-ns": 27125.0,
+          "p99-ns": 31917.0,
+          "B/op": 449.0,
+          "allocs/op": 8.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 21956.0,
+          "MB/s": 54.65,
+          "p95-ns": 28792.0,
+          "p99-ns": 34916.0,
+          "B/op": 448.0,
+          "allocs/op": 8.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 22138.0,
+          "MB/s": 54.21,
+          "p95-ns": 29500.0,
+          "p99-ns": 38792.0,
+          "B/op": 449.0,
+          "allocs/op": 8.0
+        }
+      ]
+    },
+    "BenchmarkPacketTCPRoundTrip/smux/batch=8-2": {
+      "before": [
+        {
+          "n": 5000,
+          "ns/op": 49264.0,
+          "MB/s": 194.87,
+          "p95-ns": 57583.0,
+          "p99-ns": 63792.0,
+          "B/op": 7375.0,
+          "allocs/op": 219.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 49951.0,
+          "MB/s": 192.19,
+          "p95-ns": 58750.0,
+          "p99-ns": 66334.0,
+          "B/op": 7356.0,
+          "allocs/op": 219.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 50441.0,
+          "MB/s": 190.32,
+          "p95-ns": 59708.0,
+          "p99-ns": 73709.0,
+          "B/op": 7377.0,
+          "allocs/op": 219.0
+        }
+      ],
+      "after": [
+        {
+          "n": 5000,
+          "ns/op": 48104.0,
+          "MB/s": 199.57,
+          "p95-ns": 56875.0,
+          "p99-ns": 63250.0,
+          "B/op": 2789.0,
+          "allocs/op": 48.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 48265.0,
+          "MB/s": 198.9,
+          "p95-ns": 57083.0,
+          "p99-ns": 65541.0,
+          "B/op": 2786.0,
+          "allocs/op": 48.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 48873.0,
+          "MB/s": 196.43,
+          "p95-ns": 59250.0,
+          "p99-ns": 72750.0,
+          "B/op": 2790.0,
+          "allocs/op": 48.0
+        }
+      ]
+    },
+    "BenchmarkPacketTCPRoundTrip/yamux/batch=1-2": {
+      "before": [
+        {
+          "n": 5000,
+          "ns/op": 22024.0,
+          "MB/s": 54.49,
+          "p95-ns": 28542.0,
+          "p99-ns": 32916.0,
+          "B/op": 153.0,
+          "allocs/op": 10.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 21623.0,
+          "MB/s": 55.5,
+          "p95-ns": 28083.0,
+          "p99-ns": 33583.0,
+          "B/op": 153.0,
+          "allocs/op": 10.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 21841.0,
+          "MB/s": 54.94,
+          "p95-ns": 29416.0,
+          "p99-ns": 37833.0,
+          "B/op": 153.0,
+          "allocs/op": 10.0
+        }
+      ],
+      "after": [
+        {
+          "n": 5000,
+          "ns/op": 20825.0,
+          "MB/s": 57.62,
+          "p95-ns": 27333.0,
+          "p99-ns": 31333.0,
+          "B/op": 129.0,
+          "allocs/op": 2.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 22519.0,
+          "MB/s": 53.29,
+          "p95-ns": 30292.0,
+          "p99-ns": 46542.0,
+          "B/op": 129.0,
+          "allocs/op": 2.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 21851.0,
+          "MB/s": 54.92,
+          "p95-ns": 28750.0,
+          "p99-ns": 36375.0,
+          "B/op": 129.0,
+          "allocs/op": 2.0
+        }
+      ]
+    },
+    "BenchmarkPacketTCPRoundTrip/yamux/batch=8-2": {
+      "before": [
+        {
+          "n": 5000,
+          "ns/op": 38535.0,
+          "MB/s": 249.12,
+          "p95-ns": 44500.0,
+          "p99-ns": 48375.0,
+          "B/op": 1222.0,
+          "allocs/op": 80.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 39536.0,
+          "MB/s": 242.82,
+          "p95-ns": 47875.0,
+          "p99-ns": 59875.0,
+          "B/op": 1224.0,
+          "allocs/op": 80.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 39158.0,
+          "MB/s": 245.16,
+          "p95-ns": 47167.0,
+          "p99-ns": 59667.0,
+          "B/op": 1224.0,
+          "allocs/op": 80.0
+        }
+      ],
+      "after": [
+        {
+          "n": 5000,
+          "ns/op": 38660.0,
+          "MB/s": 248.32,
+          "p95-ns": 45208.0,
+          "p99-ns": 49750.0,
+          "B/op": 1036.0,
+          "allocs/op": 16.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 38711.0,
+          "MB/s": 247.99,
+          "p95-ns": 45667.0,
+          "p99-ns": 51750.0,
+          "B/op": 1033.0,
+          "allocs/op": 16.0
+        },
+        {
+          "n": 5000,
+          "ns/op": 38761.0,
+          "MB/s": 247.67,
+          "p95-ns": 45667.0,
+          "p99-ns": 52000.0,
+          "B/op": 1033.0,
+          "allocs/op": 16.0
+        }
+      ]
+    }
+  },
+  "microbenchmarks": {
+    "owned_chunks_before": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing/common/bufio\ncpu: Apple M5\nBenchmarkChunkOwned/1200-10         \t 8435888\t        28.68 ns/op\t41844.23 MB/s\t      64 B/op\t       1 allocs/op\nBenchmarkChunkOwned/1200-10         \t 8348503\t        29.59 ns/op\t40550.23 MB/s\t      64 B/op\t       1 allocs/op\nBenchmarkChunkOwned/1200-10         \t 8030101\t        33.60 ns/op\t35718.77 MB/s\t      64 B/op\t       1 allocs/op\nBenchmarkChunkOwned/60000-10        \t  225556\t      1049 ns/op\t57203.92 MB/s\t     582 B/op\t       9 allocs/op\nBenchmarkChunkOwned/60000-10        \t  225999\t      1061 ns/op\t56528.55 MB/s\t     583 B/op\t       9 allocs/op\nBenchmarkChunkOwned/60000-10        \t  228390\t      1028 ns/op\t58351.60 MB/s\t     583 B/op\t       9 allocs/op\nBenchmarkChunkOwned/131072-10       \t   17972\t     13709 ns/op\t9560.82 MB/s\t  141383 B/op\t      18 allocs/op\nBenchmarkChunkOwned/131072-10       \t   18555\t     12208 ns/op\t10736.43 MB/s\t  141273 B/op\t      18 allocs/op\nBenchmarkChunkOwned/131072-10       \t   19544\t     12052 ns/op\t10875.71 MB/s\t  141282 B/op\t      18 allocs/op\nPASS\nok  \tgithub.com/metacubex/sing/common/bufio\t3.625s\n",
+    "owned_chunks_after": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing/common/bufio\ncpu: Apple M5\nBenchmarkChunkOwned/1200-10         \t 8447407\t        29.25 ns/op\t41029.38 MB/s\t      64 B/op\t       1 allocs/op\nBenchmarkChunkOwned/1200-10         \t 8048952\t        30.55 ns/op\t39275.86 MB/s\t      64 B/op\t       1 allocs/op\nBenchmarkChunkOwned/1200-10         \t 7463730\t        31.56 ns/op\t38018.16 MB/s\t      64 B/op\t       1 allocs/op\nBenchmarkChunkOwned/60000-10        \t  242468\t       974.9 ns/op\t61543.02 MB/s\t     256 B/op\t       4 allocs/op\nBenchmarkChunkOwned/60000-10        \t  320730\t       919.9 ns/op\t65222.82 MB/s\t     257 B/op\t       4 allocs/op\nBenchmarkChunkOwned/60000-10        \t  233373\t      1244 ns/op\t48225.89 MB/s\t     257 B/op\t       4 allocs/op\nBenchmarkChunkOwned/131072-10       \t   16675\t     14400 ns/op\t9101.99 MB/s\t  140719 B/op\t       9 allocs/op\nBenchmarkChunkOwned/131072-10       \t   17688\t     13867 ns/op\t9452.33 MB/s\t  140706 B/op\t       9 allocs/op\nBenchmarkChunkOwned/131072-10       \t   16874\t     14636 ns/op\t8955.21 MB/s\t  140681 B/op\t       9 allocs/op\nPASS\nok  \tgithub.com/metacubex/sing/common/bufio\t3.158s\n",
+    "descriptor_reuse": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing/common/buf\ncpu: Apple M5\nBenchmarkBufferDescriptor/owned-transfer-10         \t 8165440\t        34.80 ns/op\t      64 B/op\t       1 allocs/op\nBenchmarkBufferDescriptor/owned-transfer-10         \t 6467455\t        43.17 ns/op\t      64 B/op\t       1 allocs/op\nBenchmarkBufferDescriptor/owned-transfer-10         \t 5233561\t        39.35 ns/op\t      64 B/op\t       1 allocs/op\nBenchmarkBufferDescriptor/exclusive-connection-reuse-10         \t11697687\t        19.39 ns/op\t       0 B/op\t       0 allocs/op\nBenchmarkBufferDescriptor/exclusive-connection-reuse-10         \t12341102\t        19.28 ns/op\t       0 B/op\t       0 allocs/op\nBenchmarkBufferDescriptor/exclusive-connection-reuse-10         \t12740007\t        19.63 ns/op\t       0 B/op\t       0 allocs/op\nPASS\nok  \tgithub.com/metacubex/sing/common/buf\t1.980s\n",
+    "hysteria_fragment_workspace": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/sing-quic/hysteria2\ncpu: Apple M5\nBenchmarkUDPFragmentWorkspace-10    \t19008896\t        59.20 ns/op\t69186.67 MB/s\t       0 B/op\t       0 allocs/op\nPASS\nok  \tgithub.com/metacubex/sing-quic/hysteria2\t1.261s\n",
+    "tuic_parser": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/transport/tuic/v4\ncpu: Apple M5\nBenchmarkNativePacketParse/false-10         \t 5832541\t       177.0 ns/op\t6778.14 MB/s\t    1344 B/op\t       5 allocs/op\nBenchmarkNativePacketParse/true-10          \t331790316\t         3.162 ns/op\t379559.73 MB/s\t       0 B/op\t       0 allocs/op\nPASS\nok  \tgithub.com/metacubex/mihomo/transport/tuic/v4\t2.972s\ngoos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/transport/tuic/v5\ncpu: Apple M5\nBenchmarkNativePacketParse/false-10         \t 5716485\t       312.2 ns/op\t3844.25 MB/s\t    1344 B/op\t       5 allocs/op\nBenchmarkNativePacketParse/true-10          \t304392703\t         3.950 ns/op\t303803.27 MB/s\t       0 B/op\t       0 allocs/op\nPASS\nok  \tgithub.com/metacubex/mihomo/transport/tuic/v5\t4.146s\n"
+  },
+  "baseline_profiles": {
+    "hy2": {
+      "alloc_objects": "File: next-native-baseline.test\nType: alloc_objects\nTime: 2026-11-01 07:25:40 PST\nShowing nodes accounting for 18291675, 99.06% of 18465022 total\nDropped 95 nodes (cum <= 92325)\n      flat  flat%   sum%        cum   cum%\n   2719821 14.73% 14.73%    4371934 23.68%  golang.org/x/net/internal/socket.(*Conn).recvMsg\n   1269835  6.88% 21.61%    1269835  6.88%  github.com/metacubex/sing/common/buf.As (inline)\n   1135993  6.15% 27.76%    1135993  6.15%  golang.org/x/net/internal/socket.sockaddrToAddr\n   1015867  5.50% 33.26%    1015867  5.50%  github.com/metacubex/sing/common/buf.NewSize\n    864135  4.68% 37.94%     864135  4.68%  github.com/metacubex/quic-go/internal/wire.parseDatagramFrame\n    826041  4.47% 42.41%     826041  4.47%  github.com/metacubex/quic-go.(*Conn).SendDatagram\n    731848  3.96% 46.38%     731848  3.96%  github.com/metacubex/sing-quic/hysteria2.init.func1\n    729673  3.95% 50.33%     729673  3.95%  github.com/metacubex/quic-go.(*datagramQueue).HandleDatagramFrame\n    614426  3.33% 53.66%     614426  3.33%  net.ipToSockaddr\n    524295  2.84% 56.50%     524295  2.84%  github.com/metacubex/sing/common/rw.WriteString\n    524292  2.84% 59.34%    1422728  7.70%  github.com/metacubex/sing-quic/hysteria2.fragUDPMessage\n    516120  2.80% 62.13%     516120  2.80%  golang.org/x/sys/unix.anyToSockaddr\n    491526  2.66% 64.79%     491526  2.66%  encoding/binary.Write\n    480617  2.60% 67.39%     611689  3.31%  github.com/metacubex/sing/common/metadata.Socksaddr.UDPAddr\n    475150  2.57% 69.97%     475150  2.57%  github.com/metacubex/quic-go.(*packetPacker).composeNextPacket\n    458758  2.48% 72.45%     786442  4.26%  github.com/metacubex/sing-quic/hysteria2/internal/protocol.ReadVString\n    393233  2.13% 74.58%     393233  2.13%  bytes.NewReader (inline)\n    393221  2.13% 76.71%    1658431  8.98%  github.com/metacubex/sing-quic/hysteria2.(*udpDefragger).feed\n    360452  1.95% 78.66%     360452  1.95%  encoding/binary.Read\n    333152  1.80% 80.47%     333152  1.80%  github.com/metacubex/quic-go/internal/ackhandler.(*sentPacketHandler).ReceivedAck\n    328553  1.78% 82.25%     798243  4.32%  github.com/metacubex/sing/common/cache.(*LruCache[go.shape.uint16,go.shape.*uint8]).LoadOrStoreEx\n    327684  1.77% 84.02%     327684  1.77%  github.com/metacubex/sing/common/rw.ReadBytes\n    327684  1.77% 85.80%     327684  1.77%  net.JoinHostPort (inline)\n    294971  1.60% 87.39%    3065171 16.60%  github.com/metacubex/mihomo/listener/sing.(*ListenerHandler).handlePacket\n    262151  1.42% 88.81%     262151  1.42%  github.com/metacubex/sing/common/x/list.(*List[go.shape.*uint8]).insertValue (inline)\n    240309  1.30% 90.12%     240309  1.30%  github.com/metacubex/sing-quic/hysteria2.(*Client).loopMessages",
+      "cpu": "File: next-native-baseline.test\nType: cpu\nTime: 2026-11-01 07:25:36 PST\nDuration: 3.90s, Total samples = 6.09s (156.05%)\nShowing nodes accounting for 6s, 98.52% of 6.09s total\nDropped 56 nodes (cum <= 0.03s)\n      flat  flat%   sum%        cum   cum%\n     4.79s 78.65% 78.65%      4.79s 78.65%  syscall.rawsyscalln\n     1.17s 19.21% 97.87%      1.17s 19.21%  runtime.kevent\n     0.04s  0.66% 98.52%      0.04s  0.66%  runtime.madvise\n         0     0% 98.52%      3.61s 59.28%  github.com/metacubex/quic-go.(*Conn).run.func3\n         0     0% 98.52%      1.18s 19.38%  github.com/metacubex/quic-go.(*Transport).init.func1.1\n         0     0% 98.52%      1.18s 19.38%  github.com/metacubex/quic-go.(*Transport).listen\n         0     0% 98.52%      1.18s 19.38%  github.com/metacubex/quic-go.(*oobConn).ReadPacket\n         0     0% 98.52%      3.61s 59.28%  github.com/metacubex/quic-go.(*oobConn).WritePacket\n         0     0% 98.52%      3.61s 59.28%  github.com/metacubex/quic-go.(*sconn).Write\n         0     0% 98.52%      3.61s 59.28%  github.com/metacubex/quic-go.(*sconn).writePacket\n         0     0% 98.52%      3.61s 59.28%  github.com/metacubex/quic-go.(*sendQueue).Run\n         0     0% 98.52%      1.18s 19.38%  golang.org/x/net/internal/socket.(*Conn).RecvMsg (inline)\n         0     0% 98.52%      1.18s 19.38%  golang.org/x/net/internal/socket.(*Conn).recvMsg\n         0     0% 98.52%      1.18s 19.38%  golang.org/x/net/internal/socket.(*Conn).recvMsg.func1\n         0     0% 98.52%      1.18s 19.38%  golang.org/x/net/internal/socket.recvmsg\n         0     0% 98.52%      1.18s 19.38%  golang.org/x/net/ipv4.(*payloadHandler).ReadBatch\n         0     0% 98.52%      1.18s 19.38%  golang.org/x/sys/unix.RecvmsgBuffers\n         0     0% 98.52%      1.18s 19.38%  golang.org/x/sys/unix.recvmsg\n         0     0% 98.52%      1.18s 19.38%  golang.org/x/sys/unix.recvmsgRaw\n         0     0% 98.52%      1.18s 19.38%  internal/poll.(*FD).RawRead\n         0     0% 98.52%      3.61s 59.28%  internal/poll.(*FD).WriteMsg\n         0     0% 98.52%      3.61s 59.28%  net.(*UDPConn).WriteMsgUDP\n         0     0% 98.52%      3.61s 59.28%  net.(*UDPConn).writeMsg\n         0     0% 98.52%      3.61s 59.28%  net.(*netFD).writeMsg\n         0     0% 98.52%      1.18s 19.38%  net.(*rawConn).Read",
+      "blocking": "File: next-native-baseline.test\nType: delay\nTime: 2026-11-01 07:25:40 PST\nShowing nodes accounting for 82.68s, 100% of 82.69s total\nDropped 144 nodes (cum <= 0.41s)\n      flat  flat%   sum%        cum   cum%\n    61.59s 74.48% 74.48%     61.59s 74.48%  runtime.selectgo\n    15.29s 18.49% 92.97%     15.29s 18.49%  runtime.chanrecv1\n     5.80s  7.02%   100%      5.80s  7.02%  runtime.chanrecv2\n         0     0%   100%      3.80s  4.59%  github.com/metacubex/http.(*Server).Serve\n         0     0%   100%      3.58s  4.33%  github.com/metacubex/mihomo/adapter/outbound.(*packetConn).ReadPacketBuffer\n         0     0%   100%      3.58s  4.33%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).ReadPacketBuffer\n         0     0%   100%      3.37s  4.08%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).pipeReadPacketBuffer\n         0     0%   100%      3.58s  4.33%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).readPacketBuffer\n         0     0%   100%      3.37s  4.08%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).readPacketBuffer.gowrap2\n         0     0%   100%      6.89s  8.33%  github.com/metacubex/mihomo/common/net/packet.(*Reader).ReadPacket\n         0     0%   100%      3.37s  4.08%  github.com/metacubex/mihomo/common/net/packet.(*enhanceSingPacketConn).WaitReadFrom\n         0     0%   100%      3.37s  4.08%  github.com/metacubex/mihomo/common/net/packet.(*readState).read\n         0     0%   100%      3.37s  4.08%  github.com/metacubex/mihomo/common/net/packet.(*readState).waitReadFrom\n         0     0%   100%      3.37s  4.08%  github.com/metacubex/mihomo/common/net/packet.(*threadSafePacketConn).ReadPacketBuffer\n         0     0%   100%      6.95s  8.40%  github.com/metacubex/mihomo/common/net/packet.ReadPacketBuffer\n         0     0%   100%      3.37s  4.08%  github.com/metacubex/mihomo/common/net/packetbatch.(*ProgressConn).WaitReadFrom\n         0     0%   100%      3.80s  4.60%  github.com/metacubex/mihomo/common/observable.(*Observable[go.shape.struct { LogLevel github.com/metacubex/mihomo/log.LogLevel; Payload string }]).process\n         0     0%   100%      3.80s  4.60%  github.com/metacubex/mihomo/common/observable.NewObservable[go.shape.struct { LogLevel github.com/metacubex/mihomo/log.LogLevel; Payload string }].gowrap1\n         0     0%   100%      3.80s  4.59%  github.com/metacubex/mihomo/listener/inbound_test.(*TestTunnelListener).Accept\n         0     0%   100%      3.80s  4.60%  github.com/metacubex/mihomo/listener/inbound_test.BenchmarkNativeQUICOwnedRoundTrip\n         0     0%   100%      3.58s  4.33%  github.com/metacubex/mihomo/listener/inbound_test.BenchmarkNativeQUICOwnedRoundTrip.func2\n         0     0%   100%      3.58s  4.33%  github.com/metacubex/mihomo/listener/inbound_test.BenchmarkNativeQUICOwnedRoundTrip.func2.2\n         0     0%   100%      3.80s  4.59%  github.com/metacubex/mihomo/listener/inbound_test.NewHttpTestTunnel.gowrap1\n         0     0%   100%      3.52s  4.25%  github.com/metacubex/mihomo/listener/sing.(*ListenerHandler).NewPacketConnection\n         0     0%   100%         2s  2.42%  github.com/metacubex/mihomo/tunnel/statistic.(*Manager).handle\n         0     0%   100%      3.58s  4.33%  github.com/metacubex/mihomo/tunnel/statistic.(*udpTracker).ReadPacketBuffer"
+    },
+    "tuic4": {
+      "alloc_objects": "File: next-native-baseline.test\nType: alloc_objects\nTime: 2026-11-01 07:25:49 PST\nShowing nodes accounting for 10265980, 99.80% of 10286991 total\nDropped 67 nodes (cum <= 51434)\n      flat  flat%   sum%        cum   cum%\n   1579464 15.35% 15.35%    2527038 24.57%  golang.org/x/net/internal/socket.(*Conn).recvMsg\n    659381  6.41% 21.76%     659381  6.41%  github.com/metacubex/quic-go/internal/wire.parseDatagramFrame\n    611687  5.95% 27.71%     611687  5.95%  golang.org/x/net/internal/socket.sockaddrToAddr\n    553301  5.38% 33.09%     553301  5.38%  github.com/metacubex/quic-go.(*Conn).SendDatagram\n    500997  4.87% 37.96%     500997  4.87%  github.com/metacubex/quic-go.(*datagramQueue).HandleDatagramFrame\n    440045  4.28% 42.24%    2033634 19.77%  github.com/metacubex/mihomo/transport/tuic/v4.(*serverHandler).parsePacket\n    428144  4.16% 46.40%     985206  9.58%  github.com/metacubex/mihomo/transport/tuic/v4.ReadPacketWithHead\n    393233  3.82% 50.22%     589843  5.73%  github.com/metacubex/sing/common/metadata.Socksaddr.UDPAddr\n    393222  3.82% 54.04%     393222  3.82%  github.com/metacubex/mihomo/transport/tuic/v4.(*clientImpl).deferQuicConn\n    360452  3.50% 57.55%     360452  3.50%  github.com/metacubex/mihomo/transport/tuic/v4.ReadAddress\n    335887  3.27% 60.81%     335887  3.27%  golang.org/x/sys/unix.anyToSockaddr\n    327692  3.19% 64.00%     331788  3.23%  github.com/metacubex/quic-go/internal/ackhandler.(*sentPacketHandler).ReceivedAck\n    270348  2.63% 66.63%     270348  2.63%  net.ipToSockaddr\n    251229  2.44% 69.07%     251229  2.44%  github.com/metacubex/mihomo/transport/tuic/v4.(*clientImpl).handleMessage\n    240308  2.34% 71.40%     240308  2.34%  bytes.NewBuffer (inline)\n    237581  2.31% 73.71%     237581  2.31%  github.com/metacubex/sing/common/buf.NewSize\n    218461  2.12% 75.84%     218461  2.12%  github.com/metacubex/mihomo/transport/tuic.(*serverHandler).handleMessage\n    212997  2.07% 77.91%     212997  2.07%  github.com/metacubex/quic-go.(*packetPacker).composeNextPacket\n    196610  1.91% 79.82%     196610  1.91%  encoding/binary.Read\n    196610  1.91% 81.73%     196610  1.91%  net/netip.Addr.AsSlice (inline)\n    185693  1.81% 83.54%     185693  1.81%  github.com/gofrs/uuid/v5.UUID.MarshalText\n    185693  1.81% 85.34%     185693  1.81%  github.com/metacubex/mihomo/common/net.NewCustomAddr (inline)\n    157600  1.53% 86.87%     157600  1.53%  github.com/metacubex/mihomo/adapter/inbound.parseSocksAddr\n    157298  1.53% 88.40%     659804  6.41%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).pipeReadPacketBuffer\n    152924  1.49% 89.89%     998806  9.71%  github.com/metacubex/mihomo/common/net/packetbatch.(*ProgressConn).WritePacketBatchCount\n    152924  1.49% 91.38%     152924  1.49%  github.com/metacubex/mihomo/transport/tuic/v4.Address.UDPAddr (inline)",
+      "cpu": "File: next-native-baseline.test\nType: cpu\nTime: 2026-11-01 07:25:45 PST\nDuration: 4.20s, Total samples = 6.17s (146.81%)\nShowing nodes accounting for 6.03s, 97.73% of 6.17s total\nDropped 76 nodes (cum <= 0.03s)\n      flat  flat%   sum%        cum   cum%\n     4.59s 74.39% 74.39%      4.59s 74.39%  syscall.rawsyscalln\n     1.24s 20.10% 94.49%      1.24s 20.10%  runtime.kevent\n     0.11s  1.78% 96.27%      0.11s  1.78%  runtime.pthread_cond_signal\n     0.05s  0.81% 97.08%      0.05s  0.81%  runtime.pthread_cond_wait\n     0.04s  0.65% 97.73%      0.04s  0.65%  runtime.usleep\n         0     0% 97.73%      0.07s  1.13%  _.goready.func1\n         0     0% 97.73%      3.47s 56.24%  github.com/metacubex/quic-go.(*Conn).run.func3\n         0     0% 97.73%      1.15s 18.64%  github.com/metacubex/quic-go.(*Transport).init.func1.1\n         0     0% 97.73%      1.15s 18.64%  github.com/metacubex/quic-go.(*Transport).listen\n         0     0% 97.73%      1.13s 18.31%  github.com/metacubex/quic-go.(*oobConn).ReadPacket\n         0     0% 97.73%      3.47s 56.24%  github.com/metacubex/quic-go.(*oobConn).WritePacket\n         0     0% 97.73%      3.47s 56.24%  github.com/metacubex/quic-go.(*sconn).Write\n         0     0% 97.73%      3.47s 56.24%  github.com/metacubex/quic-go.(*sconn).writePacket\n         0     0% 97.73%      3.47s 56.24%  github.com/metacubex/quic-go.(*sendQueue).Run\n         0     0% 97.73%      1.13s 18.31%  golang.org/x/net/internal/socket.(*Conn).RecvMsg (inline)\n         0     0% 97.73%      1.13s 18.31%  golang.org/x/net/internal/socket.(*Conn).recvMsg\n         0     0% 97.73%      1.12s 18.15%  golang.org/x/net/internal/socket.(*Conn).recvMsg.func1\n         0     0% 97.73%      1.12s 18.15%  golang.org/x/net/internal/socket.recvmsg\n         0     0% 97.73%      1.13s 18.31%  golang.org/x/net/ipv4.(*payloadHandler).ReadBatch\n         0     0% 97.73%      1.12s 18.15%  golang.org/x/sys/unix.RecvmsgBuffers\n         0     0% 97.73%      1.12s 18.15%  golang.org/x/sys/unix.recvmsg\n         0     0% 97.73%      1.12s 18.15%  golang.org/x/sys/unix.recvmsgRaw\n         0     0% 97.73%      1.13s 18.31%  internal/poll.(*FD).RawRead\n         0     0% 97.73%      3.47s 56.24%  internal/poll.(*FD).WriteMsg\n         0     0% 97.73%      3.47s 56.24%  net.(*UDPConn).WriteMsgUDP",
+      "blocking": "File: next-native-baseline.test\nType: delay\nTime: 2026-11-01 07:25:49 PST\nShowing nodes accounting for 79.44s, 99.69% of 79.68s total\nDropped 126 nodes (cum <= 0.40s)\n      flat  flat%   sum%        cum   cum%\n    67.03s 84.12% 84.12%     67.03s 84.12%  runtime.selectgo\n     8.37s 10.50% 94.62%      8.37s 10.50%  runtime.chanrecv1\n     4.04s  5.07% 99.69%      4.04s  5.07%  runtime.chanrecv2\n         0     0% 99.69%      3.50s  4.39%  bufio.(*Reader).ReadByte\n         0     0% 99.69%      3.50s  4.39%  bufio.(*Reader).fill\n         0     0% 99.69%      4.08s  5.12%  github.com/metacubex/http.(*Server).Serve\n         0     0% 99.69%      3.84s  4.82%  github.com/metacubex/mihomo/adapter/outbound.(*packetConn).ReadPacketBuffer\n         0     0% 99.69%      3.50s  4.39%  github.com/metacubex/mihomo/common/net.(*BufferedConn).ReadByte\n         0     0% 99.69%      3.84s  4.82%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).ReadPacketBuffer\n         0     0% 99.69%      3.50s  4.39%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).pipeReadPacketBuffer\n         0     0% 99.69%      3.84s  4.82%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).readPacketBuffer\n         0     0% 99.69%      3.50s  4.39%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).readPacketBuffer.gowrap2\n         0     0% 99.69%      3.50s  4.39%  github.com/metacubex/mihomo/common/net/deadline.(*pipe).Read\n         0     0% 99.69%      3.50s  4.39%  github.com/metacubex/mihomo/common/net/deadline.(*pipe).read\n         0     0% 99.69%      3.50s  4.39%  github.com/metacubex/mihomo/common/net/packet.(*refPacketConn).WaitReadFrom\n         0     0% 99.69%      7.34s  9.21%  github.com/metacubex/mihomo/common/net/packet.ReadPacketBuffer\n         0     0% 99.69%      3.50s  4.39%  github.com/metacubex/mihomo/common/net/packetbatch.(*ProgressConn).WaitReadFrom\n         0     0% 99.69%      1.04s  1.31%  github.com/metacubex/mihomo/common/observable.(*Observable[go.shape.struct { LogLevel github.com/metacubex/mihomo/log.LogLevel; Payload string }]).process\n         0     0% 99.69%      1.04s  1.31%  github.com/metacubex/mihomo/common/observable.NewObservable[go.shape.struct { LogLevel github.com/metacubex/mihomo/log.LogLevel; Payload string }].gowrap1\n         0     0% 99.69%      4.08s  5.12%  github.com/metacubex/mihomo/listener/inbound_test.(*TestTunnelListener).Accept\n         0     0% 99.69%      4.08s  5.12%  github.com/metacubex/mihomo/listener/inbound_test.BenchmarkNativeQUICOwnedRoundTrip\n         0     0% 99.69%      3.85s  4.83%  github.com/metacubex/mihomo/listener/inbound_test.BenchmarkNativeQUICOwnedRoundTrip.func2\n         0     0% 99.69%      3.84s  4.82%  github.com/metacubex/mihomo/listener/inbound_test.BenchmarkNativeQUICOwnedRoundTrip.func2.2\n         0     0% 99.69%      4.08s  5.12%  github.com/metacubex/mihomo/listener/inbound_test.NewHttpTestTunnel.gowrap1\n         0     0% 99.69%      4.08s  5.12%  github.com/metacubex/mihomo/listener/tuic.New.func4\n         0     0% 99.69%      4.08s  5.12%  github.com/metacubex/mihomo/transport/tuic.(*Server).Serve"
+    },
+    "tuic5": {
+      "alloc_objects": "File: next-native-baseline.test\nType: alloc_objects\nTime: 2026-11-01 07:25:45 PST\nShowing nodes accounting for 14488998, 99.54% of 14555568 total\nDropped 77 nodes (cum <= 72777)\n      flat  flat%   sum%        cum   cum%\n   2136537 14.68% 14.68%    3564724 24.49%  golang.org/x/net/internal/socket.(*Conn).recvMsg\n    985506  6.77% 21.45%     985506  6.77%  github.com/metacubex/quic-go/internal/wire.parseDatagramFrame\n    961224  6.60% 28.05%     961224  6.60%  golang.org/x/net/internal/socket.sockaddrToAddr\n    799665  5.49% 33.55%     799665  5.49%  github.com/metacubex/quic-go.(*Conn).SendDatagram\n    745332  5.12% 38.67%     745332  5.12%  github.com/metacubex/quic-go.(*datagramQueue).HandleDatagramFrame\n    680314  4.67% 43.34%    1335682  9.18%  github.com/metacubex/mihomo/transport/tuic/v5.ReadPacketWithHead\n    602791  4.14% 47.48%    1301860  8.94%  github.com/metacubex/mihomo/transport/tuic/v5.(*deFragger).Feed\n    524302  3.60% 51.08%     524302  3.60%  github.com/metacubex/mihomo/transport/tuic/v5.(*clientImpl).handleMessage\n    524295  3.60% 54.69%     524295  3.60%  encoding/binary.Read\n    491536  3.38% 58.06%    2834864 19.48%  github.com/metacubex/mihomo/transport/tuic/v5.(*serverHandler).parsePacket\n    480613  3.30% 61.37%     480613  3.30%  github.com/metacubex/mihomo/transport/tuic.(*serverHandler).handleMessage\n    466963  3.21% 64.57%     466963  3.21%  golang.org/x/sys/unix.anyToSockaddr\n    458755  3.15% 67.73%    1455030 10.00%  github.com/metacubex/mihomo/transport/tuic/v5.(*quicStreamPacketConn).WriteTo\n    442381  3.04% 70.76%     442381  3.04%  github.com/metacubex/quic-go.(*packetPacker).composeNextPacket\n    401428  2.76% 73.52%     401428  2.76%  net.ipToSockaddr\n    360453  2.48% 76.00%     360453  2.48%  github.com/metacubex/mihomo/transport/tuic/v5.(*clientImpl).deferQuicConn\n    294924  2.03% 78.03%     294924  2.03%  bytes.NewBuffer (inline)\n    294921  2.03% 80.05%     294921  2.03%  github.com/bahlo/generic-list-go.(*List[go.shape.*uint8]).insertValue (inline)\n    262148  1.80% 81.85%     557069  3.83%  github.com/metacubex/mihomo/common/lru.(*LruCache[go.shape.uint16,go.shape.*uint8]).setWithExpire\n    202080  1.39% 83.24%     206176  1.42%  github.com/metacubex/quic-go/internal/ackhandler.(*sentPacketHandler).ReceivedAck\n    190068  1.31% 84.55%    1318378  9.06%  github.com/metacubex/mihomo/transport/tuic/v5.(*quicStreamPacketConn).WaitReadFrom\n    185693  1.28% 85.82%     283998  1.95%  github.com/metacubex/sing/common/metadata.Socksaddr.UDPAddr\n    150744  1.04% 86.86%    3814638 26.21%  github.com/metacubex/mihomo/transport/tuic/v5.(*serverHandler).HandleMessage\n    147465  1.01% 87.87%     147465  1.01%  github.com/metacubex/sing/common/buf.NewSize\n    142001  0.98% 88.85%     142001  0.98%  github.com/gofrs/uuid/v5.UUID.MarshalText\n    142001  0.98% 89.82%     142001  0.98%  net.UDPAddrFromAddrPort",
+      "cpu": "File: next-native-baseline.test\nType: cpu\nTime: 2026-11-01 07:25:40 PST\nDuration: 4.90s, Total samples = 7.66s (156.24%)\nShowing nodes accounting for 7.55s, 98.56% of 7.66s total\nDropped 69 nodes (cum <= 0.04s)\n      flat  flat%   sum%        cum   cum%\n     6.09s 79.50% 79.50%      6.09s 79.50%  syscall.rawsyscalln\n     1.19s 15.54% 95.04%      1.19s 15.54%  runtime.kevent\n     0.09s  1.17% 96.21%      0.09s  1.17%  runtime.usleep\n     0.08s  1.04% 97.26%      0.08s  1.04%  runtime.pthread_cond_signal\n     0.05s  0.65% 97.91%      0.05s  0.65%  runtime.pthread_cond_timedwait_relative_np\n     0.05s  0.65% 98.56%      0.05s  0.65%  runtime.pthread_kill\n         0     0% 98.56%      0.07s  0.91%  _.goready.func1\n         0     0% 98.56%      4.63s 60.44%  github.com/metacubex/quic-go.(*Conn).run.func3\n         0     0% 98.56%      1.47s 19.19%  github.com/metacubex/quic-go.(*Transport).init.func1.1\n         0     0% 98.56%      1.47s 19.19%  github.com/metacubex/quic-go.(*Transport).listen\n         0     0% 98.56%      1.46s 19.06%  github.com/metacubex/quic-go.(*oobConn).ReadPacket\n         0     0% 98.56%      4.63s 60.44%  github.com/metacubex/quic-go.(*oobConn).WritePacket\n         0     0% 98.56%      4.63s 60.44%  github.com/metacubex/quic-go.(*sconn).Write\n         0     0% 98.56%      4.63s 60.44%  github.com/metacubex/quic-go.(*sconn).writePacket\n         0     0% 98.56%      4.63s 60.44%  github.com/metacubex/quic-go.(*sendQueue).Run\n         0     0% 98.56%      1.46s 19.06%  golang.org/x/net/internal/socket.(*Conn).RecvMsg (inline)\n         0     0% 98.56%      1.46s 19.06%  golang.org/x/net/internal/socket.(*Conn).recvMsg\n         0     0% 98.56%      1.46s 19.06%  golang.org/x/net/internal/socket.(*Conn).recvMsg.func1\n         0     0% 98.56%      1.46s 19.06%  golang.org/x/net/internal/socket.recvmsg\n         0     0% 98.56%      1.46s 19.06%  golang.org/x/net/ipv4.(*payloadHandler).ReadBatch\n         0     0% 98.56%      1.46s 19.06%  golang.org/x/sys/unix.RecvmsgBuffers\n         0     0% 98.56%      1.46s 19.06%  golang.org/x/sys/unix.recvmsg\n         0     0% 98.56%      1.46s 19.06%  golang.org/x/sys/unix.recvmsgRaw\n         0     0% 98.56%      1.46s 19.06%  internal/poll.(*FD).RawRead\n         0     0% 98.56%      4.63s 60.44%  internal/poll.(*FD).WriteMsg",
+      "blocking": "File: next-native-baseline.test\nType: delay\nTime: 2026-11-01 07:25:45 PST\nShowing nodes accounting for 85.23s, 99.59% of 85.59s total\nDropped 125 nodes (cum <= 0.43s)\n      flat  flat%   sum%        cum   cum%\n    70.88s 82.81% 82.81%     70.88s 82.81%  runtime.selectgo\n     9.72s 11.36% 94.17%      9.72s 11.36%  runtime.chanrecv1\n     4.63s  5.41% 99.59%      4.63s  5.41%  runtime.chanrecv2\n         0     0% 99.59%      4.07s  4.75%  bufio.(*Reader).ReadByte\n         0     0% 99.59%      4.07s  4.75%  bufio.(*Reader).fill\n         0     0% 99.59%      4.71s  5.50%  github.com/metacubex/http.(*Server).Serve\n         0     0% 99.59%      4.50s  5.26%  github.com/metacubex/mihomo/adapter/outbound.(*packetConn).ReadPacketBuffer\n         0     0% 99.59%      4.07s  4.75%  github.com/metacubex/mihomo/common/net.(*BufferedConn).ReadByte\n         0     0% 99.59%      4.50s  5.26%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).ReadPacketBuffer\n         0     0% 99.59%      4.07s  4.75%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).pipeReadPacketBuffer\n         0     0% 99.59%      4.50s  5.26%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).readPacketBuffer\n         0     0% 99.59%      4.07s  4.75%  github.com/metacubex/mihomo/common/net/deadline.(*enhancePacketConn).readPacketBuffer.gowrap2\n         0     0% 99.59%      4.07s  4.75%  github.com/metacubex/mihomo/common/net/deadline.(*pipe).Read\n         0     0% 99.59%      0.45s  0.53%  github.com/metacubex/mihomo/common/net/deadline.(*pipe).Write\n         0     0% 99.59%      4.07s  4.75%  github.com/metacubex/mihomo/common/net/deadline.(*pipe).read\n         0     0% 99.59%      0.45s  0.53%  github.com/metacubex/mihomo/common/net/deadline.(*pipe).write\n         0     0% 99.59%      4.07s  4.75%  github.com/metacubex/mihomo/common/net/packet.(*refPacketConn).WaitReadFrom\n         0     0% 99.59%      8.57s 10.01%  github.com/metacubex/mihomo/common/net/packet.ReadPacketBuffer\n         0     0% 99.59%      4.07s  4.75%  github.com/metacubex/mihomo/common/net/packetbatch.(*ProgressConn).WaitReadFrom\n         0     0% 99.59%      1.63s  1.91%  github.com/metacubex/mihomo/common/observable.(*Observable[go.shape.struct { LogLevel github.com/metacubex/mihomo/log.LogLevel; Payload string }]).process\n         0     0% 99.59%      1.63s  1.91%  github.com/metacubex/mihomo/common/observable.NewObservable[go.shape.struct { LogLevel github.com/metacubex/mihomo/log.LogLevel; Payload string }].gowrap1\n         0     0% 99.59%      4.71s  5.50%  github.com/metacubex/mihomo/listener/inbound_test.(*TestTunnelListener).Accept\n         0     0% 99.59%      4.71s  5.50%  github.com/metacubex/mihomo/listener/inbound_test.BenchmarkNativeQUICOwnedRoundTrip\n         0     0% 99.59%      4.50s  5.26%  github.com/metacubex/mihomo/listener/inbound_test.BenchmarkNativeQUICOwnedRoundTrip.func2\n         0     0% 99.59%      4.50s  5.26%  github.com/metacubex/mihomo/listener/inbound_test.BenchmarkNativeQUICOwnedRoundTrip.func2.2\n         0     0% 99.59%      4.71s  5.50%  github.com/metacubex/mihomo/listener/inbound_test.NewHttpTestTunnel.gowrap1"
+    }
+  },
+  "pre_id_fix_native_runs": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/hysteria2-2         \t   10000\t    127172 ns/op\t  37.74 MB/s\t    121000 p50-ns\t    181250 p95-ns\t    260583 p99-ns\t   50205 B/op\t     493 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2           \t   10000\t     96197 ns/op\t  49.90 MB/s\t     89458 p50-ns\t    142209 p95-ns\t    234625 p99-ns\t   46878 B/op\t     316 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2           \t   10000\t    147741 ns/op\t  32.49 MB/s\t    134792 p50-ns\t    245750 p95-ns\t    335959 p99-ns\t   66596 B/op\t     576 allocs/op\nPASS\ngoos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/hysteria2-2         \t   10000\t    138377 ns/op\t  34.69 MB/s\t    121916 p50-ns\t    242500 p95-ns\t    329542 p99-ns\t   50180 B/op\t     492 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2           \t   10000\t    102040 ns/op\t  47.04 MB/s\t     91292 p50-ns\t    172500 p95-ns\t    271541 p99-ns\t   46871 B/op\t     316 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2           \t   10000\t    160565 ns/op\t  29.89 MB/s\t    137958 p50-ns\t    287625 p95-ns\t    421375 p99-ns\t   66580 B/op\t     574 allocs/op\nPASS\ngoos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/hysteria2-2         \t   10000\t    134928 ns/op\t  35.57 MB/s\t    118708 p50-ns\t    255375 p95-ns\t    319875 p99-ns\t   50212 B/op\t     493 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v4-2           \t   10000\t     94662 ns/op\t  50.71 MB/s\t     87500 p50-ns\t    144542 p95-ns\t    229459 p99-ns\t   46875 B/op\t     316 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2           \t--- FAIL: BenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2\n    native_quic_benchmark_test.go:133: i/o timeout\n--- FAIL: BenchmarkNativeQUICOwnedRoundTrip\nFAIL\n",
+  "final_id_sequence_endurance": "goos: darwin\ngoarch: arm64\npkg: github.com/metacubex/mihomo/listener/inbound\ncpu: Apple M5\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2         \t   10000\t    141833 ns/op\t  33.84 MB/s\t    133541 p50-ns\t    219709 p95-ns\t    295125 p99-ns\t   66824 B/op\t     578 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2         \t   10000\t    160792 ns/op\t  29.85 MB/s\t    149625 p50-ns\t    261000 p95-ns\t    340666 p99-ns\t   66793 B/op\t     577 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2         \t   10000\t    174841 ns/op\t  27.45 MB/s\t    152833 p50-ns\t    310833 p95-ns\t    385209 p99-ns\t   66796 B/op\t     578 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2         \t   10000\t    159100 ns/op\t  30.17 MB/s\t    147709 p50-ns\t    253333 p95-ns\t    335583 p99-ns\t   66771 B/op\t     578 allocs/op\nBenchmarkNativeQUICOwnedRoundTrip/tuic-v5-2         \t   10000\t    161672 ns/op\t  29.69 MB/s\t    150458 p50-ns\t    251167 p95-ns\t    341084 p99-ns\t   66769 B/op\t     578 allocs/op\nPASS\n",
+  "validation": {
+    "next-vmess-final-race": "ok  \tgithub.com/metacubex/sing-vmess\t4.479s\nok  \tgithub.com/metacubex/sing-vmess/packetaddr\t4.070s\n?   \tgithub.com/metacubex/sing-vmess/vless\t[no test files]\n",
+    "next-vmess-final-lowmem": "ok  \tgithub.com/metacubex/sing-vmess\t1.198s\nok  \tgithub.com/metacubex/sing-vmess/packetaddr\t1.066s\n?   \tgithub.com/metacubex/sing-vmess/vless\t[no test files]\n",
+    "next-vmess-domain-race": "ok  \tgithub.com/metacubex/sing-vmess\t1.563s\nok  \tgithub.com/metacubex/sing-vmess/packetaddr\t1.219s\n?   \tgithub.com/metacubex/sing-vmess/vless\t[no test files]\n",
+    "next-mux-final-race": "ok  \tgithub.com/metacubex/sing-mux\t4.127s\n",
+    "next-mux-final-lowmem": "ok  \tgithub.com/metacubex/sing-mux\t1.090s\n",
+    "next-sing-final-race": "ok  \tgithub.com/metacubex/sing/common/buf\t4.105s\nok  \tgithub.com/metacubex/sing/common/bufio\t7.384s\nok  \tgithub.com/metacubex/sing/common/network\t4.069s\nok  \tgithub.com/metacubex/sing/common/metadata\t4.066s\n",
+    "next-sing-final-lowmem": "ok  \tgithub.com/metacubex/sing/common/buf\t1.055s\nok  \tgithub.com/metacubex/sing/common/bufio\t2.247s\nok  \tgithub.com/metacubex/sing/common/network\t1.057s\nok  \tgithub.com/metacubex/sing/common/metadata\t1.051s\n",
+    "next-sing-quic-final-race": "?   \tgithub.com/metacubex/sing-quic\t[no test files]\nok  \tgithub.com/metacubex/sing-quic/hysteria2\t4.085s\n?   \tgithub.com/metacubex/sing-quic/hysteria2/congestion\t[no test files]\n?   \tgithub.com/metacubex/sing-quic/hysteria2/internal/protocol\t[no test files]\n?   \tgithub.com/metacubex/sing-quic/hysteria2/internal/stun\t[no test files]\n?   \tgithub.com/metacubex/sing-quic/hysteria2/realm\t[no test files]\n",
+    "next-hy2-final-lowmem": "ok  \tgithub.com/metacubex/sing-quic/hysteria2\t1.079s\n?   \tgithub.com/metacubex/sing-quic/hysteria2/congestion\t[no test files]\n?   \tgithub.com/metacubex/sing-quic/hysteria2/internal/protocol\t[no test files]\n?   \tgithub.com/metacubex/sing-quic/hysteria2/internal/stun\t[no test files]\n?   \tgithub.com/metacubex/sing-quic/hysteria2/realm\t[no test files]\n",
+    "next-root-final-race": "?   \tgithub.com/metacubex/mihomo/transport/tuic\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/common\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/congestion\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/congestion_v2\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/types\t[no test files]\nok  \tgithub.com/metacubex/mihomo/transport/tuic/v4\t1.276s\nok  \tgithub.com/metacubex/mihomo/transport/tuic/v5\t1.180s\nok  \tgithub.com/metacubex/mihomo/listener/inbound\t2.426s\nok  \tgithub.com/metacubex/mihomo/common/net/packetbatch\t1.070s [no tests to run]\n",
+    "next-root-final-lowmem": "?   \tgithub.com/metacubex/mihomo/transport/tuic\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/common\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/congestion\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/congestion_v2\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/types\t[no test files]\nok  \tgithub.com/metacubex/mihomo/transport/tuic/v4\t1.494s\nok  \tgithub.com/metacubex/mihomo/transport/tuic/v5\t1.571s\nok  \tgithub.com/metacubex/mihomo/listener/inbound\t2.200s\n",
+    "next-smux-final-race": "ok  \tgithub.com/metacubex/smux\t2.881s\n",
+    "smux_full": [
+      "--- PASS: TestShaperReuseBoundAndReferences (0.00s)",
+      "PASS",
+      "ok  \tgithub.com/metacubex/smux\t122.044s"
+    ],
+    "full_root": "Failed: TestInboundVless_XHTTP_H1_Encryption/stream-up/nosplit/single/Concurrent (closed pipe); other packages passed. SKIP_INTEROP_TEST=1 excludes external interop binaries.",
+    "baseline_xhttp": "Fresh published dependencies reproduced closed pipe and then timed out at 180 seconds. Baseline race repeats 3 and 20 passed; current race repeats reproduced failures. Existing unstable XHTTP case remains outside this change.",
+    "cross_builds": "Linux/amd64 and Windows/amd64 CGO_ENABLED=0 succeeded; runtime not tested.",
+    "published_source_guard": "Single sing source: github.com/metacubex/sing => github.com/Herta-Network/sing@v0.0.0-20261101154303-1260cbaedd25\n",
+    "published_root_race": "ok  \tgithub.com/metacubex/mihomo/listener/inbound\t1.939s\n?   \tgithub.com/metacubex/mihomo/transport/tuic\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/common\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/congestion\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/congestion_v2\t[no test files]\n?   \tgithub.com/metacubex/mihomo/transport/tuic/types\t[no test files]\nok  \tgithub.com/metacubex/mihomo/transport/tuic/v4\t1.418s\nok  \tgithub.com/metacubex/mihomo/transport/tuic/v5\t1.440s\n",
+    "published_root_low_memory": "ok  \tgithub.com/metacubex/mihomo/listener/inbound\t4.586s\n",
+    "published_builds": "GOWORK=off ordinary go build ./... and with_naive,with_purego go build ./... passed; downloaded fork Go sources byte-match the benchmarked source."
+  },
+  "published_sources": {
+    "sing": "1260cbaedd252f9abb8d23576c862f64f50c0c98",
+    "sing-vmess": "7cef310d10c44e3232244f6c7340ffa0dee0fb49",
+    "sing-mux": "d06b28e91440b1a68ad1157d2d311a3f0fbd2c72",
+    "smux": "10aa72a7535ccdfff207dbd78c2a815e82b71932",
+    "sing-quic": "9d7d4312a27b3ff6bce45ade73d0603afd58edba"
+  },
+  "published_modules": {
+    "sing": {
+      "commit": "1260cbaedd252f9abb8d23576c862f64f50c0c98",
+      "version": "v0.0.0-20261101154303-1260cbaedd25"
+    },
+    "smux": {
+      "commit": "10aa72a7535ccdfff207dbd78c2a815e82b71932",
+      "version": "v0.0.0-20261101154434-10aa72a7535c"
+    },
+    "sing-vmess": {
+      "commit": "7cef310d10c44e3232244f6c7340ffa0dee0fb49",
+      "version": "v0.0.0-20261101154439-7cef310d10c4"
+    },
+    "sing-quic": {
+      "commit": "9d7d4312a27b3ff6bce45ade73d0603afd58edba",
+      "version": "v0.0.0-20261101154443-9d7d4312a27b"
+    },
+    "sing-mux": {
+      "commit": "d06b28e91440b1a68ad1157d2d311a3f0fbd2c72",
+      "version": "v0.0.0-20261101154723-d06b28e91440"
+    }
+  }
+}
