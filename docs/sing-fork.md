@@ -1,7 +1,7 @@
 # sing fork integration
 
 `github.com/metacubex/sing` is replaced with the fixed Herta-Network revision
-`b5e7e17f97a04fa13eddb5a3a08335b3d786975d` in `go.mod`. This also selects the fork
+`1d1b6994cf4aac99fe90d39831b8525233d744a1` in `go.mod`. This also selects the fork
 for MetaCubeX protocol dependencies that import that module path. The cronet-go, sing-snell, sing-vmess and sing-mux forks use this same module path. Their public
 package paths remain unchanged, but their sources are selected with fixed fork
 replacements. There is no separate `github.com/sagernet/sing` in the production
@@ -10,11 +10,11 @@ No local checkout or moving branch is needed to build mihomo.
 
 | Module identity | Fixed source commit |
 | --- | --- |
-| `github.com/metacubex/sing` | Herta-Network/sing `b5e7e17f97a0` |
+| `github.com/metacubex/sing` | Herta-Network/sing `1d1b6994cf4a` |
 | `github.com/sagernet/cronet-go` | Herta-Network/cronet-go `511fbbf40a07` |
 | `github.com/sagernet/sing-snell` | Herta-Network/sing-snell `1fa24ee9ea84` |
-| `github.com/metacubex/sing-vmess` | Herta-Network/sing-vmess `12f108ffaf84` |
-| `github.com/metacubex/sing-mux` | Herta-Network/sing-mux `c0be7c45926a` |
+| `github.com/metacubex/sing-vmess` | Herta-Network/sing-vmess `83a9fdf3e38e` |
+| `github.com/metacubex/sing-mux` | Herta-Network/sing-mux `9a83d0dd7caa` |
 
 ## Data paths
 
@@ -171,6 +171,27 @@ including real request/reply loopbacks and an isolated downstream-loop benchmark
 Datagram receive capacity is independent of low-memory stream buffers. Generic
 packet connections allow a full UDP datagram, and legacy Snell reads reserve
 its full protocol record size, preventing low-memory truncation.
+
+## Protocol framing allocation follow-up
+
+UoT advertises front headroom and prepends its header directly to owned packets.
+Batches without sufficient headroom retain separate header/payload vectors so
+an opaque joined writer copies each payload once. Scalar writes use the counted
+writer and retain partial-frame poisoning and complete-prefix accounting.
+
+Sing-mux caches its counted writer and single-packet workspace under its write
+mutex. Address serialization writes directly into header storage. VMess's length
+masking reuses its two-byte scratch; XUDP and packetaddr avoid temporary header
+descriptors, and the CFB checksum layer preserves the owned `WriteBuffer` path.
+Rejected packets release their input. Packetaddr's borrowed API reports payload
+bytes, excluding its address header.
+
+The [protocol framing report](benchmarks/protocol-framing-2026-11-01.md) includes
+producer allocation and real TCP round trips. Normal 1200-byte encoding paths
+retain one producer buffer allocation per packet; large XUDP frames still need
+chunk workspaces, and generic opaque batch joining still copies output bytes.
+[Configuration and GEO concurrency](concurrency-lifecycle.md) describes the
+separate lifecycle fixes and their regression coverage.
 
 ## Regression checks
 

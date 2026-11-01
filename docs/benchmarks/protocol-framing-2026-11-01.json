@@ -1,0 +1,2001 @@
+{
+  "host": "Apple M5, macOS arm64",
+  "go": "go1.27.3",
+  "gomaxprocs": 2,
+  "benchtime": "500ms",
+  "samples": 3,
+  "baseline": {
+    "sing": "b5e7e17f97a04fa13eddb5a3a08335b3d786975d",
+    "sing-mux": "c0be7c45926a6a2d860ba31526a01fce19aa39b3",
+    "sing-vmess": "12f108ffaf84156274170cd7382bb348f3abd266"
+  },
+  "updated": {
+    "sing": "1d1b6994cf4aac99fe90d39831b8525233d744a1",
+    "sing-mux": "9a83d0dd7caa8eba1ce0e05ef33cb97a5b095833",
+    "sing-vmess": "83a9fdf3e38e61efe2bdefad7aa6c5b6532013ab"
+  },
+  "samples_data": [
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=1",
+      "iterations": 10034150,
+      "ns_per_op": 71.01,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=1",
+      "iterations": 10586851,
+      "ns_per_op": 57.4,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=1",
+      "iterations": 10624851,
+      "ns_per_op": 66.58,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 539.7,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 562.9,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 542.4,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=1",
+      "iterations": 10579032,
+      "ns_per_op": 56.47,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=1",
+      "iterations": 10642842,
+      "ns_per_op": 56.44,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=1",
+      "iterations": 10754286,
+      "ns_per_op": 56.51,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 524.3,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 520.7,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 535.9,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=1",
+      "iterations": 6367992,
+      "ns_per_op": 103.7,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=1",
+      "iterations": 6041664,
+      "ns_per_op": 90.25,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=1",
+      "iterations": 6583880,
+      "ns_per_op": 90.0,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=8",
+      "iterations": 753547,
+      "ns_per_op": 807.2,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=8",
+      "iterations": 757192,
+      "ns_per_op": 804.9,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=8",
+      "iterations": 757323,
+      "ns_per_op": 800.2,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=1",
+      "iterations": 6683046,
+      "ns_per_op": 89.77,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=1",
+      "iterations": 6718676,
+      "ns_per_op": 89.87,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=1",
+      "iterations": 6620487,
+      "ns_per_op": 90.35,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=8",
+      "iterations": 733698,
+      "ns_per_op": 813.4,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=8",
+      "iterations": 733656,
+      "ns_per_op": 812.8,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=8",
+      "iterations": 742608,
+      "ns_per_op": 809.1,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedTCPRoundTrip",
+      "iterations": 35294,
+      "ns_per_op": 15394.0,
+      "bytes_per_op": 232,
+      "allocs_per_op": 6
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedTCPRoundTrip",
+      "iterations": 38259,
+      "ns_per_op": 16187.0,
+      "bytes_per_op": 232,
+      "allocs_per_op": 6
+    },
+    {
+      "suite": "uot",
+      "phase": "before",
+      "name": "BenchmarkOwnedTCPRoundTrip",
+      "iterations": 38745,
+      "ns_per_op": 15940.0,
+      "bytes_per_op": 232,
+      "allocs_per_op": 6
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=1",
+      "iterations": 7002388,
+      "ns_per_op": 73.41,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=1",
+      "iterations": 9896403,
+      "ns_per_op": 60.56,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=1",
+      "iterations": 9856174,
+      "ns_per_op": 60.46,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 544.7,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 540.6,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=0/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 519.9,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=1",
+      "iterations": 20033806,
+      "ns_per_op": 29.84,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=1",
+      "iterations": 20013008,
+      "ns_per_op": 29.82,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=1",
+      "iterations": 20067616,
+      "ns_per_op": 29.8,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=8",
+      "iterations": 1611156,
+      "ns_per_op": 382.6,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=8",
+      "iterations": 1582507,
+      "ns_per_op": 361.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=true/headroom=261/batch=8",
+      "iterations": 1678624,
+      "ns_per_op": 361.2,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=1",
+      "iterations": 6185877,
+      "ns_per_op": 95.94,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=1",
+      "iterations": 6241882,
+      "ns_per_op": 96.14,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=1",
+      "iterations": 6291489,
+      "ns_per_op": 98.79,
+      "bytes_per_op": 128,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=8",
+      "iterations": 654007,
+      "ns_per_op": 828.6,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=8",
+      "iterations": 723766,
+      "ns_per_op": 830.8,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=0/batch=8",
+      "iterations": 732038,
+      "ns_per_op": 930.6,
+      "bytes_per_op": 1025,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=1",
+      "iterations": 8425496,
+      "ns_per_op": 66.58,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=1",
+      "iterations": 9156612,
+      "ns_per_op": 65.72,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=1",
+      "iterations": 9057554,
+      "ns_per_op": 65.96,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=8",
+      "iterations": 725115,
+      "ns_per_op": 799.4,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=8",
+      "iterations": 733765,
+      "ns_per_op": 803.2,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedFrames/connect=false/headroom=261/batch=8",
+      "iterations": 729039,
+      "ns_per_op": 804.9,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedTCPRoundTrip",
+      "iterations": 34574,
+      "ns_per_op": 15642.0,
+      "bytes_per_op": 112,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedTCPRoundTrip",
+      "iterations": 38768,
+      "ns_per_op": 15487.0,
+      "bytes_per_op": 112,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "uot",
+      "phase": "after",
+      "name": "BenchmarkOwnedTCPRoundTrip",
+      "iterations": 38487,
+      "ns_per_op": 15537.0,
+      "bytes_per_op": 112,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=false/batch=1",
+      "iterations": 6278217,
+      "ns_per_op": 101.9,
+      "bytes_per_op": 152,
+      "allocs_per_op": 4
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=false/batch=1",
+      "iterations": 6285866,
+      "ns_per_op": 95.56,
+      "bytes_per_op": 152,
+      "allocs_per_op": 4
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=false/batch=1",
+      "iterations": 6275791,
+      "ns_per_op": 95.87,
+      "bytes_per_op": 152,
+      "allocs_per_op": 4
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=false/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 536.0,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 17
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=false/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 536.2,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 17
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=false/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 541.3,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 17
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=true/batch=1",
+      "iterations": 5639264,
+      "ns_per_op": 105.8,
+      "bytes_per_op": 152,
+      "allocs_per_op": 4
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=true/batch=1",
+      "iterations": 5682866,
+      "ns_per_op": 105.9,
+      "bytes_per_op": 152,
+      "allocs_per_op": 4
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=true/batch=1",
+      "iterations": 5659009,
+      "ns_per_op": 106.1,
+      "bytes_per_op": 152,
+      "allocs_per_op": 4
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=true/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 587.6,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 17
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=true/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 581.7,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 17
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketFrames/address=true/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 583.4,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 17
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=1",
+      "iterations": 20854,
+      "ns_per_op": 28216.0,
+      "bytes_per_op": 506,
+      "allocs_per_op": 20
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=1",
+      "iterations": 22626,
+      "ns_per_op": 26703.0,
+      "bytes_per_op": 504,
+      "allocs_per_op": 20
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=1",
+      "iterations": 22530,
+      "ns_per_op": 43481.0,
+      "bytes_per_op": 505,
+      "allocs_per_op": 20
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=8",
+      "iterations": 5318,
+      "ns_per_op": 147099.0,
+      "bytes_per_op": 3554,
+      "allocs_per_op": 144
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=8",
+      "iterations": 3931,
+      "ns_per_op": 131702.0,
+      "bytes_per_op": 3562,
+      "allocs_per_op": 144
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=8",
+      "iterations": 5144,
+      "ns_per_op": 100085.0,
+      "bytes_per_op": 3558,
+      "allocs_per_op": 144
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=1",
+      "iterations": 12856,
+      "ns_per_op": 45699.0,
+      "bytes_per_op": 5473,
+      "allocs_per_op": 46
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=1",
+      "iterations": 22532,
+      "ns_per_op": 26481.0,
+      "bytes_per_op": 5473,
+      "allocs_per_op": 46
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=1",
+      "iterations": 24024,
+      "ns_per_op": 24490.0,
+      "bytes_per_op": 5473,
+      "allocs_per_op": 46
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=8",
+      "iterations": 10000,
+      "ns_per_op": 52310.0,
+      "bytes_per_op": 40133,
+      "allocs_per_op": 242
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=8",
+      "iterations": 10000,
+      "ns_per_op": 52566.0,
+      "bytes_per_op": 40119,
+      "allocs_per_op": 242
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=8",
+      "iterations": 10000,
+      "ns_per_op": 51887.0,
+      "bytes_per_op": 40113,
+      "allocs_per_op": 242
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=1",
+      "iterations": 26197,
+      "ns_per_op": 23224.0,
+      "bytes_per_op": 328,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=1",
+      "iterations": 26277,
+      "ns_per_op": 24175.0,
+      "bytes_per_op": 328,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=1",
+      "iterations": 23542,
+      "ns_per_op": 24176.0,
+      "bytes_per_op": 328,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=8",
+      "iterations": 15302,
+      "ns_per_op": 39321.0,
+      "bytes_per_op": 2453,
+      "allocs_per_op": 113
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=8",
+      "iterations": 10000,
+      "ns_per_op": 56533.0,
+      "bytes_per_op": 2453,
+      "allocs_per_op": 113
+    },
+    {
+      "suite": "mux",
+      "phase": "before",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=8",
+      "iterations": 14325,
+      "ns_per_op": 39445.0,
+      "bytes_per_op": 2457,
+      "allocs_per_op": 113
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=false/batch=1",
+      "iterations": 6891655,
+      "ns_per_op": 87.61,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=false/batch=1",
+      "iterations": 6862252,
+      "ns_per_op": 87.04,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=false/batch=1",
+      "iterations": 6868692,
+      "ns_per_op": 86.77,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=false/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 512.3,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=false/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 500.2,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=false/batch=8",
+      "iterations": 1219298,
+      "ns_per_op": 494.5,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=true/batch=1",
+      "iterations": 6680299,
+      "ns_per_op": 89.61,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=true/batch=1",
+      "iterations": 6659775,
+      "ns_per_op": 89.79,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=true/batch=1",
+      "iterations": 6685707,
+      "ns_per_op": 89.75,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=true/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 513.2,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=true/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 518.8,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketFrames/address=true/batch=8",
+      "iterations": 1000000,
+      "ns_per_op": 571.4,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=1",
+      "iterations": 21405,
+      "ns_per_op": 26714.0,
+      "bytes_per_op": 328,
+      "allocs_per_op": 14
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=1",
+      "iterations": 22281,
+      "ns_per_op": 27047.0,
+      "bytes_per_op": 329,
+      "allocs_per_op": 14
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=1",
+      "iterations": 22332,
+      "ns_per_op": 27052.0,
+      "bytes_per_op": 327,
+      "allocs_per_op": 14
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=8",
+      "iterations": 7918,
+      "ns_per_op": 81831.0,
+      "bytes_per_op": 2309,
+      "allocs_per_op": 111
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=8",
+      "iterations": 7228,
+      "ns_per_op": 81115.0,
+      "bytes_per_op": 2312,
+      "allocs_per_op": 111
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/h2mux/batch=8",
+      "iterations": 7023,
+      "ns_per_op": 83063.0,
+      "bytes_per_op": 2315,
+      "allocs_per_op": 111
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=1",
+      "iterations": 21310,
+      "ns_per_op": 27676.0,
+      "bytes_per_op": 5297,
+      "allocs_per_op": 40
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=1",
+      "iterations": 22592,
+      "ns_per_op": 27962.0,
+      "bytes_per_op": 5297,
+      "allocs_per_op": 40
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=1",
+      "iterations": 22612,
+      "ns_per_op": 26353.0,
+      "bytes_per_op": 5297,
+      "allocs_per_op": 40
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=8",
+      "iterations": 10000,
+      "ns_per_op": 59090.0,
+      "bytes_per_op": 38870,
+      "allocs_per_op": 209
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=8",
+      "iterations": 10000,
+      "ns_per_op": 58496.0,
+      "bytes_per_op": 38872,
+      "allocs_per_op": 209
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/smux/batch=8",
+      "iterations": 10000,
+      "ns_per_op": 61769.0,
+      "bytes_per_op": 38885,
+      "allocs_per_op": 209
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=1",
+      "iterations": 23338,
+      "ns_per_op": 37770.0,
+      "bytes_per_op": 152,
+      "allocs_per_op": 10
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=1",
+      "iterations": 21501,
+      "ns_per_op": 25467.0,
+      "bytes_per_op": 152,
+      "allocs_per_op": 10
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=1",
+      "iterations": 24471,
+      "ns_per_op": 26358.0,
+      "bytes_per_op": 152,
+      "allocs_per_op": 10
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=8",
+      "iterations": 14115,
+      "ns_per_op": 42284.0,
+      "bytes_per_op": 1221,
+      "allocs_per_op": 80
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=8",
+      "iterations": 13903,
+      "ns_per_op": 43448.0,
+      "bytes_per_op": 1218,
+      "allocs_per_op": 80
+    },
+    {
+      "suite": "mux",
+      "phase": "after",
+      "name": "BenchmarkPacketTCPRoundTrip/yamux/batch=8",
+      "iterations": 13054,
+      "ns_per_op": 52798.0,
+      "bytes_per_op": 1219,
+      "allocs_per_op": 80
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=1",
+      "iterations": 2398414,
+      "ns_per_op": 238.9,
+      "bytes_per_op": 66,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=1",
+      "iterations": 2488720,
+      "ns_per_op": 238.2,
+      "bytes_per_op": 66,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=1",
+      "iterations": 2516764,
+      "ns_per_op": 239.4,
+      "bytes_per_op": 66,
+      "allocs_per_op": 2
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=8",
+      "iterations": 318201,
+      "ns_per_op": 2406.0,
+      "bytes_per_op": 528,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=8",
+      "iterations": 243392,
+      "ns_per_op": 2128.0,
+      "bytes_per_op": 528,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=8",
+      "iterations": 297166,
+      "ns_per_op": 2048.0,
+      "bytes_per_op": 528,
+      "allocs_per_op": 16
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+      "iterations": 1872532,
+      "ns_per_op": 293.2,
+      "bytes_per_op": 130,
+      "allocs_per_op": 3
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+      "iterations": 2115213,
+      "ns_per_op": 282.4,
+      "bytes_per_op": 130,
+      "allocs_per_op": 3
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+      "iterations": 2179212,
+      "ns_per_op": 275.0,
+      "bytes_per_op": 130,
+      "allocs_per_op": 3
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=8",
+      "iterations": 274854,
+      "ns_per_op": 2164.0,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 24
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=8",
+      "iterations": 268824,
+      "ns_per_op": 2297.0,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 24
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=8",
+      "iterations": 269016,
+      "ns_per_op": 2223.0,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 24
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=1",
+      "iterations": 2096104,
+      "ns_per_op": 285.2,
+      "bytes_per_op": 130,
+      "allocs_per_op": 3
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=1",
+      "iterations": 2108650,
+      "ns_per_op": 284.9,
+      "bytes_per_op": 130,
+      "allocs_per_op": 3
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=1",
+      "iterations": 2109129,
+      "ns_per_op": 284.1,
+      "bytes_per_op": 130,
+      "allocs_per_op": 3
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=8",
+      "iterations": 270656,
+      "ns_per_op": 2241.0,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 24
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=8",
+      "iterations": 266880,
+      "ns_per_op": 2231.0,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 24
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=8",
+      "iterations": 269824,
+      "ns_per_op": 2223.0,
+      "bytes_per_op": 1041,
+      "allocs_per_op": 24
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+      "iterations": 276111,
+      "ns_per_op": 2307.0,
+      "bytes_per_op": 194,
+      "allocs_per_op": 4
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+      "iterations": 242806,
+      "ns_per_op": 2305.0,
+      "bytes_per_op": 194,
+      "allocs_per_op": 4
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+      "iterations": 272098,
+      "ns_per_op": 2161.0,
+      "bytes_per_op": 194,
+      "allocs_per_op": 4
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=8",
+      "iterations": 35314,
+      "ns_per_op": 16916.0,
+      "bytes_per_op": 1555,
+      "allocs_per_op": 32
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=8",
+      "iterations": 35508,
+      "ns_per_op": 16906.0,
+      "bytes_per_op": 1555,
+      "allocs_per_op": 32
+    },
+    {
+      "suite": "vmess",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=8",
+      "iterations": 35524,
+      "ns_per_op": 16912.0,
+      "bytes_per_op": 1557,
+      "allocs_per_op": 32
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=1",
+      "iterations": 2370655,
+      "ns_per_op": 229.7,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=1",
+      "iterations": 2607498,
+      "ns_per_op": 230.2,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=1",
+      "iterations": 2608150,
+      "ns_per_op": 230.0,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=8",
+      "iterations": 331730,
+      "ns_per_op": 1832.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=8",
+      "iterations": 326904,
+      "ns_per_op": 1817.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/udp/size=1200/batch=8",
+      "iterations": 324822,
+      "ns_per_op": 1928.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+      "iterations": 1000000,
+      "ns_per_op": 562.6,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+      "iterations": 939524,
+      "ns_per_op": 699.9,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+      "iterations": 856872,
+      "ns_per_op": 694.3,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=8",
+      "iterations": 257528,
+      "ns_per_op": 2283.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=8",
+      "iterations": 169616,
+      "ns_per_op": 3077.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=8",
+      "iterations": 224938,
+      "ns_per_op": 2407.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=1",
+      "iterations": 2095104,
+      "ns_per_op": 274.9,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=1",
+      "iterations": 2063653,
+      "ns_per_op": 296.9,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=1",
+      "iterations": 2088352,
+      "ns_per_op": 283.0,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=8",
+      "iterations": 275961,
+      "ns_per_op": 2268.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=8",
+      "iterations": 267502,
+      "ns_per_op": 2243.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/packetaddr/size=1200/batch=8",
+      "iterations": 266042,
+      "ns_per_op": 2203.0,
+      "bytes_per_op": 512,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+      "iterations": 265006,
+      "ns_per_op": 2194.0,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+      "iterations": 276714,
+      "ns_per_op": 3123.0,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+      "iterations": 251210,
+      "ns_per_op": 2631.0,
+      "bytes_per_op": 64,
+      "allocs_per_op": 1
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=8",
+      "iterations": 32548,
+      "ns_per_op": 17174.0,
+      "bytes_per_op": 513,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=8",
+      "iterations": 35170,
+      "ns_per_op": 16682.0,
+      "bytes_per_op": 513,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=8",
+      "iterations": 36196,
+      "ns_per_op": 16615.0,
+      "bytes_per_op": 513,
+      "allocs_per_op": 8
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-aes",
+      "iterations": 14860,
+      "ns_per_op": 39038.0,
+      "bytes_per_op": 5134,
+      "allocs_per_op": 108
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-aes",
+      "iterations": 15766,
+      "ns_per_op": 40408.0,
+      "bytes_per_op": 5136,
+      "allocs_per_op": 108
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-aes",
+      "iterations": 12738,
+      "ns_per_op": 51298.0,
+      "bytes_per_op": 5120,
+      "allocs_per_op": 108
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+      "iterations": 6074,
+      "ns_per_op": 90842.0,
+      "bytes_per_op": 13862,
+      "allocs_per_op": 112
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+      "iterations": 6704,
+      "ns_per_op": 89159.0,
+      "bytes_per_op": 13857,
+      "allocs_per_op": 112
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+      "iterations": 7057,
+      "ns_per_op": 90538.0,
+      "bytes_per_op": 13893,
+      "allocs_per_op": 112
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+      "iterations": 10000,
+      "ns_per_op": 60847.0,
+      "bytes_per_op": 6819,
+      "allocs_per_op": 236
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+      "iterations": 9566,
+      "ns_per_op": 60492.0,
+      "bytes_per_op": 6817,
+      "allocs_per_op": 236
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+      "iterations": 9850,
+      "ns_per_op": 78336.0,
+      "bytes_per_op": 6818,
+      "allocs_per_op": 236
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+      "iterations": 10000,
+      "ns_per_op": 58360.0,
+      "bytes_per_op": 5651,
+      "allocs_per_op": 116
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+      "iterations": 10000,
+      "ns_per_op": 66179.0,
+      "bytes_per_op": 5644,
+      "allocs_per_op": 116
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "before",
+      "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+      "iterations": 10705,
+      "ns_per_op": 50497.0,
+      "bytes_per_op": 5643,
+      "allocs_per_op": 116
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-aes",
+      "iterations": 14811,
+      "ns_per_op": 38920.0,
+      "bytes_per_op": 5106,
+      "allocs_per_op": 100
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-aes",
+      "iterations": 15463,
+      "ns_per_op": 38055.0,
+      "bytes_per_op": 5096,
+      "allocs_per_op": 100
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-aes",
+      "iterations": 14515,
+      "ns_per_op": 49448.0,
+      "bytes_per_op": 5116,
+      "allocs_per_op": 100
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+      "iterations": 6261,
+      "ns_per_op": 102603.0,
+      "bytes_per_op": 5149,
+      "allocs_per_op": 92
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+      "iterations": 5724,
+      "ns_per_op": 104748.0,
+      "bytes_per_op": 5110,
+      "allocs_per_op": 92
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+      "iterations": 5628,
+      "ns_per_op": 96759.0,
+      "bytes_per_op": 5111,
+      "allocs_per_op": 92
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+      "iterations": 9408,
+      "ns_per_op": 75676.0,
+      "bytes_per_op": 6549,
+      "allocs_per_op": 224
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+      "iterations": 8281,
+      "ns_per_op": 68774.0,
+      "bytes_per_op": 6539,
+      "allocs_per_op": 224
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+      "iterations": 7038,
+      "ns_per_op": 92765.0,
+      "bytes_per_op": 6557,
+      "allocs_per_op": 224
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+      "iterations": 8292,
+      "ns_per_op": 96684.0,
+      "bytes_per_op": 5116,
+      "allocs_per_op": 100
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+      "iterations": 7473,
+      "ns_per_op": 115136.0,
+      "bytes_per_op": 5102,
+      "allocs_per_op": 100
+    },
+    {
+      "suite": "vmess-loop",
+      "phase": "after",
+      "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+      "iterations": 7647,
+      "ns_per_op": 69504.0,
+      "bytes_per_op": 5093,
+      "allocs_per_op": 100
+    }
+  ],
+  "interleaved_check": {
+    "reason": "Investigate large timing variation in the sequential run",
+    "benchtime": "500ms",
+    "repeats": 3,
+    "order": "Alternate before/after for each case; reverse order on repeat 2",
+    "samples_data": [
+      {
+        "suite": "vmess",
+        "phase": "before",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+        "iterations": 2157350,
+        "ns_per_op": 273.9,
+        "bytes_per_op": 130,
+        "allocs_per_op": 3
+      },
+      {
+        "suite": "vmess",
+        "phase": "after",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+        "iterations": 2346692,
+        "ns_per_op": 260.7,
+        "bytes_per_op": 64,
+        "allocs_per_op": 1
+      },
+      {
+        "suite": "vmess",
+        "phase": "before",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+        "iterations": 275089,
+        "ns_per_op": 2146.0,
+        "bytes_per_op": 194,
+        "allocs_per_op": 4
+      },
+      {
+        "suite": "vmess",
+        "phase": "after",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+        "iterations": 290299,
+        "ns_per_op": 2071.0,
+        "bytes_per_op": 64,
+        "allocs_per_op": 1
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "before",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+        "iterations": 12438,
+        "ns_per_op": 45542.0,
+        "bytes_per_op": 6831,
+        "allocs_per_op": 236
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "after",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+        "iterations": 10000,
+        "ns_per_op": 62561.0,
+        "bytes_per_op": 6560,
+        "allocs_per_op": 224
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "before",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+        "iterations": 13117,
+        "ns_per_op": 43244.0,
+        "bytes_per_op": 5646,
+        "allocs_per_op": 116
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "after",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+        "iterations": 14120,
+        "ns_per_op": 44371.0,
+        "bytes_per_op": 5117,
+        "allocs_per_op": 100
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "before",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+        "iterations": 7654,
+        "ns_per_op": 121802.0,
+        "bytes_per_op": 13943,
+        "allocs_per_op": 112
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "after",
+        "repeat": 0,
+        "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+        "iterations": 6439,
+        "ns_per_op": 83190.0,
+        "bytes_per_op": 5097,
+        "allocs_per_op": 92
+      },
+      {
+        "suite": "vmess",
+        "phase": "after",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+        "iterations": 2012330,
+        "ns_per_op": 271.9,
+        "bytes_per_op": 64,
+        "allocs_per_op": 1
+      },
+      {
+        "suite": "vmess",
+        "phase": "before",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+        "iterations": 2149471,
+        "ns_per_op": 303.7,
+        "bytes_per_op": 130,
+        "allocs_per_op": 3
+      },
+      {
+        "suite": "vmess",
+        "phase": "after",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+        "iterations": 196798,
+        "ns_per_op": 2544.0,
+        "bytes_per_op": 64,
+        "allocs_per_op": 1
+      },
+      {
+        "suite": "vmess",
+        "phase": "before",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+        "iterations": 250730,
+        "ns_per_op": 2307.0,
+        "bytes_per_op": 194,
+        "allocs_per_op": 4
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "after",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+        "iterations": 11703,
+        "ns_per_op": 51704.0,
+        "bytes_per_op": 6538,
+        "allocs_per_op": 224
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "before",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+        "iterations": 10000,
+        "ns_per_op": 92191.0,
+        "bytes_per_op": 6850,
+        "allocs_per_op": 236
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "after",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+        "iterations": 6163,
+        "ns_per_op": 101339.0,
+        "bytes_per_op": 5099,
+        "allocs_per_op": 100
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "before",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+        "iterations": 5854,
+        "ns_per_op": 119784.0,
+        "bytes_per_op": 5645,
+        "allocs_per_op": 116
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "after",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+        "iterations": 7690,
+        "ns_per_op": 66837.0,
+        "bytes_per_op": 5117,
+        "allocs_per_op": 92
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "before",
+        "repeat": 1,
+        "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+        "iterations": 8026,
+        "ns_per_op": 71299.0,
+        "bytes_per_op": 13891,
+        "allocs_per_op": 112
+      },
+      {
+        "suite": "vmess",
+        "phase": "before",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+        "iterations": 2047573,
+        "ns_per_op": 275.1,
+        "bytes_per_op": 130,
+        "allocs_per_op": 3
+      },
+      {
+        "suite": "vmess",
+        "phase": "after",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedFrames/xudp/size=1200/batch=1",
+        "iterations": 2358937,
+        "ns_per_op": 254.7,
+        "bytes_per_op": 64,
+        "allocs_per_op": 1
+      },
+      {
+        "suite": "vmess",
+        "phase": "before",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+        "iterations": 276080,
+        "ns_per_op": 2154.0,
+        "bytes_per_op": 194,
+        "allocs_per_op": 4
+      },
+      {
+        "suite": "vmess",
+        "phase": "after",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedFrames/legacy/size=1200/batch=1",
+        "iterations": 284637,
+        "ns_per_op": 2134.0,
+        "bytes_per_op": 64,
+        "allocs_per_op": 1
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "before",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+        "iterations": 12056,
+        "ns_per_op": 52399.0,
+        "bytes_per_op": 6828,
+        "allocs_per_op": 236
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "after",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedRoundTrip/xudp",
+        "iterations": 10000,
+        "ns_per_op": 55089.0,
+        "bytes_per_op": 6547,
+        "allocs_per_op": 224
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "before",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+        "iterations": 13335,
+        "ns_per_op": 45799.0,
+        "bytes_per_op": 5651,
+        "allocs_per_op": 116
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "after",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedRoundTrip/packetaddr",
+        "iterations": 10000,
+        "ns_per_op": 58026.0,
+        "bytes_per_op": 5128,
+        "allocs_per_op": 100
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "before",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+        "iterations": 6712,
+        "ns_per_op": 82000.0,
+        "bytes_per_op": 13926,
+        "allocs_per_op": 112
+      },
+      {
+        "suite": "vmess-loop",
+        "phase": "after",
+        "repeat": 2,
+        "name": "BenchmarkVMessOwnedRoundTrip/udp-cfb",
+        "iterations": 8412,
+        "ns_per_op": 81824.0,
+        "bytes_per_op": 5114,
+        "allocs_per_op": 92
+      }
+    ]
+  }
+}

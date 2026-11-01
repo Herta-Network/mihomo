@@ -183,12 +183,12 @@ require (
 replace google.golang.org/protobuf => github.com/metacubex/protobuf-go v0.0.0-20260306035419-7ceee0674686
 
 // Fixed fork revision; see docs/sing-fork.md for data-path integration and limits.
-replace github.com/metacubex/sing => github.com/Herta-Network/sing v0.0.0-20261101130428-b5e7e17f97a0
+replace github.com/metacubex/sing => github.com/Herta-Network/sing v0.0.0-20261101142927-1d1b6994cf4a
 
 replace github.com/sagernet/cronet-go => github.com/Herta-Network/cronet-go v0.0.0-20261101093049-511fbbf40a07
 
 replace github.com/sagernet/sing-snell => github.com/Herta-Network/sing-snell v0.0.0-20261101131232-1fa24ee9ea84
 
-replace github.com/metacubex/sing-vmess => github.com/Herta-Network/sing-vmess v0.0.0-20261101114133-12f108ffaf84
+replace github.com/metacubex/sing-vmess => github.com/Herta-Network/sing-vmess v0.0.0-20261101143035-83a9fdf3e38e
 
-replace github.com/metacubex/sing-mux => github.com/Herta-Network/sing-mux v0.0.0-20261101114134-c0be7c45926a
+replace github.com/metacubex/sing-mux => github.com/Herta-Network/sing-mux v0.0.0-20261101143034-9a83d0dd7caa
