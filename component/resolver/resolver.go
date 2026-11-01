@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/metacubex/mihomo/common/atomic"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/trie"
 
@@ -29,7 +30,7 @@ var (
 
 	// DisableIPv6 means don't resolve ipv6 host
 	// default value is true
-	DisableIPv6 = true
+	DisableIPv6 = atomic.NewBool(true)
 
 	// DefaultHosts aim to resolve hosts
 	DefaultHosts = NewHosts(trie.New[HostValue]())
@@ -104,7 +105,7 @@ func ResolveIPv4(ctx context.Context, host string) (netip.Addr, error) {
 
 // LookupIPv6WithResolver same as LookupIPv6, but with a resolver
 func LookupIPv6WithResolver(ctx context.Context, host string, r Resolver) ([]netip.Addr, error) {
-	if DisableIPv6 {
+	if DisableIPv6.Load() {
 		return nil, ErrIPv6Disabled
 	}
 
@@ -158,11 +159,11 @@ func LookupIPWithResolver(ctx context.Context, host string, r Resolver) ([]netip
 	}
 
 	if r != nil && r.Invalid() {
-		if DisableIPv6 {
+		if DisableIPv6.Load() {
 			return r.LookupIPv4(ctx, host)
 		}
 		return r.LookupIP(ctx, host)
-	} else if DisableIPv6 {
+	} else if DisableIPv6.Load() {
 		return LookupIPv4WithResolver(ctx, host, r)
 	}
 

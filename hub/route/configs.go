@@ -22,7 +22,7 @@ import (
 	"github.com/metacubex/http"
 )
 
-func configRouter() http.Handler {
+func configRouter(embedMode bool) http.Handler {
 	r := chi.NewRouter()
 	r.Get("/", getConfigs)
 	if !embedMode { // disallow update/patch configs in embed mode
@@ -343,17 +343,11 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 		listener.SetAllowLan(*general.AllowLan)
 	}
 
-	if general.SkipAuthPrefixes != nil {
-		inbound.SetSkipAuthPrefixes(*general.SkipAuthPrefixes)
-	}
-
-	if general.LanAllowedIPs != nil {
-		inbound.SetAllowedIPs(*general.LanAllowedIPs)
-	}
-
-	if general.LanDisAllowedIPs != nil {
-		inbound.SetDisAllowedIPs(*general.LanDisAllowedIPs)
-	}
+	inbound.UpdateAccessPolicy(inbound.AccessPolicyPatch{
+		AllowedIPs:       general.LanAllowedIPs,
+		DisAllowedIPs:    general.LanDisAllowedIPs,
+		SkipAuthPrefixes: general.SkipAuthPrefixes,
+	})
 
 	if general.BindAddress != nil {
 		listener.SetBindAddress(*general.BindAddress)
@@ -396,7 +390,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if general.IPv6 != nil {
-		resolver.DisableIPv6 = !*general.IPv6
+		resolver.DisableIPv6.Store(!*general.IPv6)
 	}
 
 	render.NoContent(w, r)
@@ -454,7 +448,7 @@ func updateConfigs(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateGeoDatabases(w http.ResponseWriter, r *http.Request) {
-	err := updater.UpdateGeoDatabases()
+	err := updater.UpdateGeoDatabasesContext(r.Context())
 	if err != nil {
 		log.Errorln("[GEO] update GEO databases failed: %v", err)
 		render.Status(r, http.StatusInternalServerError)

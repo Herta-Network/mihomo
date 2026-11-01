@@ -133,6 +133,8 @@ func GetGeneral() *config.General {
 		authenticator = auth.Users()
 	}
 
+	accessPolicy := inbound.GetAccessPolicy()
+	geoSettings := geodata.GetSettings()
 	general := &config.General{
 		Inbound: config.Inbound{
 			Port:              ports.Port,
@@ -145,9 +147,9 @@ func GetGeneral() *config.General {
 			ShadowSocksConfig: ports.ShadowSocksConfig,
 			VmessConfig:       ports.VmessConfig,
 			Authentication:    authenticator,
-			SkipAuthPrefixes:  inbound.SkipAuthPrefixes(),
-			LanAllowedIPs:     inbound.AllowedIPs(),
-			LanDisAllowedIPs:  inbound.DisAllowedIPs(),
+			SkipAuthPrefixes:  accessPolicy.SkipAuthPrefixes,
+			LanAllowedIPs:     accessPolicy.AllowedIPs,
+			LanDisAllowedIPs:  accessPolicy.DisAllowedIPs,
 			AllowLan:          listener.AllowLan(),
 			BindAddress:       listener.BindAddress(),
 			InboundTfo:        inbound.Tfo(),
@@ -156,20 +158,20 @@ func GetGeneral() *config.General {
 		Mode:         tunnel.Mode(),
 		UnifiedDelay: adapter.UnifiedDelay.Load(),
 		LogLevel:     log.Level(),
-		IPv6:         !resolver.DisableIPv6,
+		IPv6:         !resolver.DisableIPv6.Load(),
 		Interface:    dialer.DefaultInterface.Load(),
 		RoutingMark:  int(dialer.DefaultRoutingMark.Load()),
 		GeoXUrl: config.GeoXUrl{
-			GeoIp:   geodata.GeoIpUrl(),
-			Mmdb:    geodata.MmdbUrl(),
-			ASN:     geodata.ASNUrl(),
-			GeoSite: geodata.GeoSiteUrl(),
+			GeoIp:   geoSettings.GeoIPURL,
+			Mmdb:    geoSettings.MMDBURL,
+			ASN:     geoSettings.ASNURL,
+			GeoSite: geoSettings.GeoSiteURL,
 		},
 		GeoAutoUpdate:     updater.GeoAutoUpdate(),
 		GeoUpdateInterval: updater.GeoUpdateInterval(),
-		GeodataMode:       geodata.GeodataMode(),
-		GeodataLoader:     geodata.LoaderName(),
-		GeositeMatcher:    geodata.SiteMatcherName(),
+		GeodataMode:       geoSettings.Mode,
+		GeodataLoader:     geoSettings.Loader,
+		GeositeMatcher:    geoSettings.SiteMatcher,
 		TCPConcurrent:     dialer.GetTcpConcurrent(),
 		FindProcessMode:   tunnel.FindProcessMode(),
 		Sniffing:          tunnel.IsSniffing(),
@@ -191,9 +193,7 @@ func updateListeners(general *config.General, listeners map[string]C.InboundList
 
 	allowLan := general.AllowLan
 	listener.SetAllowLan(allowLan)
-	inbound.SetSkipAuthPrefixes(general.SkipAuthPrefixes)
-	inbound.SetAllowedIPs(general.LanAllowedIPs)
-	inbound.SetDisAllowedIPs(general.LanDisAllowedIPs)
+	inbound.SetAccessPolicy(inbound.AccessPolicy{AllowedIPs: general.LanAllowedIPs, DisAllowedIPs: general.LanDisAllowedIPs, SkipAuthPrefixes: general.SkipAuthPrefixes})
 
 	bindAddress := general.BindAddress
 	listener.SetBindAddress(bindAddress)
@@ -393,7 +393,7 @@ func temporaryUpdateGeneral(general *config.General) func() {
 func updateGeneral(general *config.General, logging bool) {
 	tunnel.SetMode(general.Mode)
 	tunnel.SetFindProcessMode(general.FindProcessMode)
-	resolver.DisableIPv6 = !general.IPv6
+	resolver.DisableIPv6.Store(!general.IPv6)
 
 	dialer.SetTcpConcurrent(general.TCPConcurrent)
 	if logging && general.TCPConcurrent {
@@ -417,13 +417,11 @@ func updateGeneral(general *config.General, logging bool) {
 
 	iface.FlushCache()
 
-	geodata.SetGeodataMode(general.GeodataMode)
-	geodata.SetLoader(general.GeodataLoader)
-	geodata.SetSiteMatcher(general.GeositeMatcher)
-	geodata.SetGeoIpUrl(general.GeoXUrl.GeoIp)
-	geodata.SetGeoSiteUrl(general.GeoXUrl.GeoSite)
-	geodata.SetMmdbUrl(general.GeoXUrl.Mmdb)
-	geodata.SetASNUrl(general.GeoXUrl.ASN)
+	geodata.SetSettings(geodata.Settings{
+		Mode: general.GeodataMode, Loader: general.GeodataLoader, SiteMatcher: general.GeositeMatcher,
+		GeoIPURL: general.GeoXUrl.GeoIp, GeoSiteURL: general.GeoXUrl.GeoSite,
+		MMDBURL: general.GeoXUrl.Mmdb, ASNURL: general.GeoXUrl.ASN,
+	})
 	mihomoHttp.SetUA(general.GlobalUA)
 	resource.SetETag(general.ETagSupport)
 }

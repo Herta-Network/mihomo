@@ -77,6 +77,15 @@ jobs:
           -run 'TestRelay|TestPacket|TestProtocolPacket|TestSingPacketIntegration|TestInboundSnellBatch|TestTLSPayloadCount|TestReverse'
           -count=1 -timeout=90s
 
+      - name: Test configuration and GEO lifecycle with race detector
+        if: matrix.go-version == '1.26' && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || matrix.os == 'macos-latest')
+        env:
+          CGO_ENABLED: 1
+        run: >-
+          go test -race ./adapter/inbound ./common/queue ./common/singleflight ./log ./constant
+          ./component/geodata/... ./component/mmdb ./component/updater ./hub/route ./hub/executor
+          -count=1 -timeout=120s
+
       - name: Remove inbound test for macOS
         if: ${{ runner.os == 'macOS' }}
         run: |

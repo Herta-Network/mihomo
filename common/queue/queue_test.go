@@ -142,7 +142,7 @@ func TestQueueConcurrency(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < operations; j++ {
-				q.Put(id*operations + j)
+				q.Put(id*operations + j + 1)
 				// Small sleep to increase chance of race conditions
 				time.Sleep(time.Microsecond)
 			}
@@ -155,16 +155,9 @@ func TestQueueConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < operations; j++ {
-				// Try to pop an item, but don't block if queue is empty
-				// Use a mutex to avoid race condition between Len() check and Pop()
-				q.lock.Lock()
-				if len(q.items) > 0 {
-					item := q.items[0]
-					q.items = q.items[1:]
-					q.lock.Unlock()
+				// Exercise the public method; zero is reserved for an empty queue.
+				if item := q.Pop(); item != 0 {
 					consumed <- item
-				} else {
-					q.lock.Unlock()
 				}
 				// Small sleep to increase chance of race conditions
 				time.Sleep(time.Microsecond)

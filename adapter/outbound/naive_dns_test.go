@@ -28,13 +28,14 @@ func (r naiveTestResolver) ExchangeContext(ctx context.Context, query *dns.Msg) 
 
 func TestNaiveDNS(t *testing.T) {
 	oldProxy, oldSystem, oldDefault := resolver.ProxyServerHostResolver, resolver.SystemResolver, resolver.DefaultResolver
-	oldHosts, oldIPv6 := resolver.DefaultHosts, resolver.DisableIPv6
+	oldHosts, oldIPv6 := resolver.DefaultHosts, resolver.DisableIPv6.Load()
 	t.Cleanup(func() {
 		resolver.ProxyServerHostResolver, resolver.SystemResolver, resolver.DefaultResolver = oldProxy, oldSystem, oldDefault
-		resolver.DefaultHosts, resolver.DisableIPv6 = oldHosts, oldIPv6
+		resolver.DefaultHosts = oldHosts
+		resolver.DisableIPv6.Store(oldIPv6)
 	})
 	resolver.DefaultHosts = resolver.NewHosts(trie.New[resolver.HostValue]())
-	resolver.DisableIPv6 = false
+	resolver.DisableIPv6.Store(false)
 	var queries []string
 	var cached *dns.Msg
 	resolver.ProxyServerHostResolver = naiveTestResolver{exchange: func(ctx context.Context, query *dns.Msg) (*dns.Msg, error) {

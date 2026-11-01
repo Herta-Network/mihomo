@@ -12,7 +12,7 @@ import (
 	"github.com/metacubex/http"
 )
 
-func upgradeRouter() http.Handler {
+func upgradeRouter(embedMode bool) http.Handler {
 	r := chi.NewRouter()
 	r.Post("/ui", updateUI)
 	if !embedMode { // disallow upgrade core/geo in embed mode

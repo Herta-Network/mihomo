@@ -26,7 +26,7 @@ func naiveDNSResolver(prefer C.DNSPrefer) func(context.Context, *dns.Msg) *dns.M
 			response.Rcode = dns.RcodeNotImplemented
 			return response
 		}
-		if question.Qtype == dns.TypeAAAA && (resolver.DisableIPv6 || prefer == C.IPv4Only) || question.Qtype == dns.TypeA && prefer == C.IPv6Only {
+		if question.Qtype == dns.TypeAAAA && (resolver.DisableIPv6.Load() || prefer == C.IPv4Only) || question.Qtype == dns.TypeA && prefer == C.IPv6Only {
 			return response
 		}
 		domain := strings.TrimSuffix(question.Name, ".")

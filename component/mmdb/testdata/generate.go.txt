@@ -1,0 +1,28 @@
+package main
+
+import (
+ "net"
+ "os"
+ "path/filepath"
+ "github.com/maxmind/mmdbwriter"
+ "github.com/maxmind/mmdbwriter/mmdbtype"
+)
+
+func main() {
+ out := os.Args[1]
+ must(os.MkdirAll(out, 0755))
+ _, network, err := net.ParseCIDR("1.2.3.0/24"); must(err)
+ for _, item := range []struct{name, kind string; value mmdbtype.DataType}{
+  {"country-a", "GeoLite2-Country", mmdbtype.Map{"country": mmdbtype.Map{"iso_code":mmdbtype.String("AA")}}},
+  {"country-b", "GeoLite2-Country", mmdbtype.Map{"country": mmdbtype.Map{"iso_code":mmdbtype.String("BB")}}},
+  {"asn-a", "GeoLite2-ASN", mmdbtype.Map{"autonomous_system_number":mmdbtype.Uint32(64512), "autonomous_system_organization":mmdbtype.String("Test A")}},
+  {"asn-b", "GeoLite2-ASN", mmdbtype.Map{"autonomous_system_number":mmdbtype.Uint32(64513), "autonomous_system_organization":mmdbtype.String("Test B")}},
+  {"ipinfo", "ipinfo generic_asn_free.mmdb", mmdbtype.Map{"asn":mmdbtype.String("AS64512"), "name":mmdbtype.String("Test IPInfo")}},
+ } {
+  tree, err := mmdbwriter.New(mmdbwriter.Options{DatabaseType:item.kind, Description:map[string]string{"en":"Synthetic test fixture"}, Languages:[]string{"en"}, IPVersion:4, RecordSize:24, BuildEpoch:1, IncludeReservedNetworks:true}); must(err)
+  must(tree.Insert(network,item.value))
+  f,err := os.Create(filepath.Join(out,item.name+".mmdb"));must(err)
+  _,err=tree.WriteTo(f);must(err);must(f.Close())
+ }
+}
+func must(err error) { if err != nil {panic(err)} }

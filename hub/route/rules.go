@@ -11,7 +11,7 @@ import (
 	"github.com/metacubex/http"
 )
 
-func ruleRouter() http.Handler {
+func ruleRouter(embedMode bool) http.Handler {
 	r := chi.NewRouter()
 	r.Get("/", getRules)
 	if !embedMode { // disallow update/patch rules in embed mode

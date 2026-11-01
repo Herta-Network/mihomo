@@ -5,261 +5,141 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
+	"sync/atomic"
 	"time"
 
-	"github.com/metacubex/mihomo/common/atomic"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/geodata"
-	_ "github.com/metacubex/mihomo/component/geodata/standard"
-	"github.com/metacubex/mihomo/component/mmdb"
 	"github.com/metacubex/mihomo/component/resource"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
-
-	"github.com/oschwald/maxminddb-golang"
 	"golang.org/x/sync/errgroup"
 )
 
 var (
-	autoUpdate     bool
-	updateInterval int
-
-	updatingGeo atomic.Bool
+	autoUpdate     atomic.Bool
+	updateInterval atomic.Int64
+	updatingGeo    atomic.Bool
 )
 
-func GeoAutoUpdate() bool {
-	return autoUpdate
-}
-
-func GeoUpdateInterval() int {
-	return updateInterval
-}
-
-func SetGeoAutoUpdate(newAutoUpdate bool) {
-	autoUpdate = newAutoUpdate
-}
-
-func SetGeoUpdateInterval(newGeoUpdateInterval int) {
-	updateInterval = newGeoUpdateInterval
-}
-
-func UpdateMMDB() (err error) {
-	vehicle := resource.NewHTTPVehicle(geodata.MmdbUrl(), C.Path.MMDB(), "", nil, defaultHttpTimeout, 0)
-	var oldHash utils.HashType
-	if buf, err := os.ReadFile(vehicle.Path()); err == nil {
-		oldHash = utils.MakeHash(buf)
-	}
-	data, hash, err := vehicle.Read(context.Background(), oldHash)
-	if err != nil {
-		return fmt.Errorf("can't download MMDB database file: %w", err)
-	}
-	if oldHash.Equal(hash) { // same hash, ignored
-		return nil
-	}
-	if len(data) == 0 {
-		return fmt.Errorf("can't download MMDB database file: no data")
-	}
-
-	instance, err := maxminddb.FromBytes(data)
-	if err != nil {
-		return fmt.Errorf("invalid MMDB database file: %s", err)
-	}
-	_ = instance.Close()
-
-	defer mmdb.ReloadIP()
-	mmdb.IPInstance().Reader.Close() //  mmdb is loaded with mmap, so it needs to be closed before overwriting the file
-	if err = vehicle.Write(data); err != nil {
-		return fmt.Errorf("can't save MMDB database file: %w", err)
-	}
-	return nil
-}
-
-func UpdateASN() (err error) {
-	vehicle := resource.NewHTTPVehicle(geodata.ASNUrl(), C.Path.ASN(), "", nil, defaultHttpTimeout, 0)
-	var oldHash utils.HashType
-	if buf, err := os.ReadFile(vehicle.Path()); err == nil {
-		oldHash = utils.MakeHash(buf)
-	}
-	data, hash, err := vehicle.Read(context.Background(), oldHash)
-	if err != nil {
-		return fmt.Errorf("can't download ASN database file: %w", err)
-	}
-	if oldHash.Equal(hash) { // same hash, ignored
-		return nil
-	}
-	if len(data) == 0 {
-		return fmt.Errorf("can't download ASN database file: no data")
-	}
-
-	instance, err := maxminddb.FromBytes(data)
-	if err != nil {
-		return fmt.Errorf("invalid ASN database file: %s", err)
-	}
-	_ = instance.Close()
-
-	defer mmdb.ReloadASN()
-	mmdb.ASNInstance().Reader.Close() //  mmdb is loaded with mmap, so it needs to be closed before overwriting the file
-	if err = vehicle.Write(data); err != nil {
-		return fmt.Errorf("can't save ASN database file: %w", err)
-	}
-	return nil
-}
-
-func UpdateGeoIp() (err error) {
-	geoLoader, err := geodata.GetGeoDataLoader("standard")
-
-	vehicle := resource.NewHTTPVehicle(geodata.GeoIpUrl(), C.Path.GeoIP(), "", nil, defaultHttpTimeout, 0)
-	var oldHash utils.HashType
-	if buf, err := os.ReadFile(vehicle.Path()); err == nil {
-		oldHash = utils.MakeHash(buf)
-	}
-	data, hash, err := vehicle.Read(context.Background(), oldHash)
-	if err != nil {
-		return fmt.Errorf("can't download GeoIP database file: %w", err)
-	}
-	if oldHash.Equal(hash) { // same hash, ignored
-		return nil
-	}
-	if len(data) == 0 {
-		return fmt.Errorf("can't download GeoIP database file: no data")
-	}
-
-	if _, err = geoLoader.LoadIPByBytes(data, "cn"); err != nil {
-		return fmt.Errorf("invalid GeoIP database file: %s", err)
-	}
-
-	defer geodata.ClearGeoIPCache()
-	if err = vehicle.Write(data); err != nil {
-		return fmt.Errorf("can't save GeoIP database file: %w", err)
-	}
-	return nil
-}
-
-func UpdateGeoSite() (err error) {
-	geoLoader, err := geodata.GetGeoDataLoader("standard")
-
-	vehicle := resource.NewHTTPVehicle(geodata.GeoSiteUrl(), C.Path.GeoSite(), "", nil, defaultHttpTimeout, 0)
-	var oldHash utils.HashType
-	if buf, err := os.ReadFile(vehicle.Path()); err == nil {
-		oldHash = utils.MakeHash(buf)
-	}
-	data, hash, err := vehicle.Read(context.Background(), oldHash)
-	if err != nil {
-		return fmt.Errorf("can't download GeoSite database file: %w", err)
-	}
-	if oldHash.Equal(hash) { // same hash, ignored
-		return nil
-	}
-	if len(data) == 0 {
-		return fmt.Errorf("can't download GeoSite database file: no data")
-	}
-
-	if _, err = geoLoader.LoadSiteByBytes(data, "cn"); err != nil {
-		return fmt.Errorf("invalid GeoSite database file: %s", err)
-	}
-
-	defer geodata.ClearGeoSiteCache()
-	if err = vehicle.Write(data); err != nil {
-		return fmt.Errorf("can't save GeoSite database file: %w", err)
-	}
-	return nil
-}
-
-func updateGeoDatabases() error {
-	defer runtime.GC()
-
-	b := errgroup.Group{}
-
-	if geodata.GeoIpEnable() {
-		if geodata.GeodataMode() {
-			b.Go(UpdateGeoIp)
-		} else {
-			b.Go(UpdateMMDB)
-		}
-	}
-
-	if geodata.ASNEnable() {
-		b.Go(UpdateASN)
-	}
-
-	if geodata.GeoSiteEnable() {
-		b.Go(UpdateGeoSite)
-	}
-
-	return b.Wait()
-}
+func GeoAutoUpdate() bool            { return autoUpdate.Load() }
+func GeoUpdateInterval() int         { return int(updateInterval.Load()) }
+func SetGeoAutoUpdate(value bool)    { autoUpdate.Store(value) }
+func SetGeoUpdateInterval(value int) { updateInterval.Store(int64(value)) }
 
 var ErrGetDatabaseUpdateSkip = errors.New("GEO database is updating, skip")
 
-func UpdateGeoDatabases() error {
-	log.Infoln("[GEO] Start updating GEO database")
-
-	if updatingGeo.Load() {
-		return ErrGetDatabaseUpdateSkip
-	}
-
-	updatingGeo.Store(true)
-	defer updatingGeo.Store(false)
-
-	log.Infoln("[GEO] Updating GEO database")
-
-	if err := updateGeoDatabases(); err != nil {
-		log.Errorln("[GEO] update GEO database error: %s", err.Error())
+func withGeoUpdate(ctx context.Context, update func(geodata.Settings, C.GeoPaths) error) error {
+	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if !updatingGeo.CompareAndSwap(false, true) {
+		return ErrGetDatabaseUpdateSkip
+	}
+	defer updatingGeo.Store(false)
+	return update(geodata.GetSettings(), C.Path.GeoPaths())
+}
 
+func updateDatabase(ctx context.Context, kind geodata.Database, settings geodata.Settings, paths C.GeoPaths) error {
+	vehicle := resource.NewHTTPVehicle(kind.URL(settings), kind.Path(paths), "", nil, defaultHttpTimeout, 0)
+	var oldHash utils.HashType
+	if data, err := os.ReadFile(vehicle.Path()); err == nil {
+		oldHash = utils.MakeHash(data)
+	}
+	data, hash, err := vehicle.Read(ctx, oldHash)
+	if err != nil {
+		return fmt.Errorf("download %s: %w", vehicle.Path(), err)
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if oldHash.Equal(hash) {
+		return nil
+	}
+	if err := geodata.InstallDatabase(ctx, kind, settings, paths, data); err != nil {
+		return fmt.Errorf("install %s: %w", vehicle.Path(), err)
+	}
 	return nil
 }
 
-func getUpdateTime() (time time.Time, err error) {
-	filesToCheck := []string{
-		C.Path.GeoIP(),
-		C.Path.MMDB(),
-		C.Path.ASN(),
-		C.Path.GeoSite(),
-	}
+func updateOne(ctx context.Context, kind geodata.Database) error {
+	return withGeoUpdate(ctx, func(settings geodata.Settings, paths C.GeoPaths) error {
+		return updateDatabase(ctx, kind, settings, paths)
+	})
+}
+func UpdateMMDB() error                              { return UpdateMMDBContext(context.Background()) }
+func UpdateASN() error                               { return UpdateASNContext(context.Background()) }
+func UpdateGeoIp() error                             { return UpdateGeoIpContext(context.Background()) }
+func UpdateGeoSite() error                           { return UpdateGeoSiteContext(context.Background()) }
+func UpdateMMDBContext(ctx context.Context) error    { return updateOne(ctx, geodata.MMDB) }
+func UpdateASNContext(ctx context.Context) error     { return updateOne(ctx, geodata.ASN) }
+func UpdateGeoIpContext(ctx context.Context) error   { return updateOne(ctx, geodata.GeoIP) }
+func UpdateGeoSiteContext(ctx context.Context) error { return updateOne(ctx, geodata.GeoSite) }
 
-	for _, file := range filesToCheck {
-		var fileInfo os.FileInfo
-		fileInfo, err = os.Stat(file)
+func UpdateGeoDatabases() error { return UpdateGeoDatabasesContext(context.Background()) }
+
+// Downloads inherit cancellation. Publication never acquires an embedding
+// engine's lifecycle lock, so Stop may cancel and join while holding that lock.
+func UpdateGeoDatabasesContext(ctx context.Context) error {
+	return withGeoUpdate(ctx, func(settings geodata.Settings, paths C.GeoPaths) error {
+		log.Infoln("[GEO] Updating GEO database")
+		group, ctx := errgroup.WithContext(ctx)
+		kinds := make([]geodata.Database, 0, 3)
+		if geodata.GeoIpEnable() {
+			kind := geodata.MMDB
+			if settings.Mode {
+				kind = geodata.GeoIP
+			}
+			kinds = append(kinds, kind)
+		}
+		if geodata.ASNEnable() {
+			kinds = append(kinds, geodata.ASN)
+		}
+		if geodata.GeoSiteEnable() {
+			kinds = append(kinds, geodata.GeoSite)
+		}
+		for _, kind := range kinds {
+			group.Go(func() error { return updateDatabase(ctx, kind, settings, paths) })
+		}
+		return group.Wait()
+	})
+}
+
+func getUpdateTime() (time.Time, error) {
+	paths := C.Path.GeoPaths()
+	var err error
+	for _, file := range []string{paths.GeoIP, paths.MMDB, paths.ASN, paths.GeoSite} {
+		var info os.FileInfo
+		info, err = os.Stat(file)
 		if err == nil {
-			return fileInfo.ModTime(), nil
+			return info.ModTime(), nil
 		}
 	}
-
-	return
+	return time.Time{}, err
 }
 
 func RegisterGeoUpdater() {
-	if updateInterval <= 0 {
-		log.Errorln("[GEO] Invalid update interval: %d", updateInterval)
+	interval := GeoUpdateInterval()
+	if interval <= 0 {
+		log.Errorln("[GEO] Invalid update interval: %d", interval)
 		return
 	}
-
 	go func() {
-		ticker := time.NewTicker(time.Duration(updateInterval) * time.Hour)
+		ticker := time.NewTicker(time.Duration(interval) * time.Hour)
 		defer ticker.Stop()
-
-		lastUpdate, err := getUpdateTime()
+		last, err := getUpdateTime()
 		if err != nil {
-			log.Errorln("[GEO] Get GEO database update time error: %s", err.Error())
+			log.Errorln("[GEO] Get update time: %s", err)
 			return
 		}
-
-		log.Infoln("[GEO] last update time %s", lastUpdate)
-		if lastUpdate.Add(time.Duration(updateInterval) * time.Hour).Before(time.Now()) {
-			log.Infoln("[GEO] Database has not been updated for %v, update now", time.Duration(updateInterval)*time.Hour)
+		if last.Add(time.Duration(interval) * time.Hour).Before(time.Now()) {
 			if err := UpdateGeoDatabases(); err != nil {
-				log.Errorln("[GEO] Failed to update GEO database: %s", err.Error())
-				return
+				log.Errorln("[GEO] Update: %s", err)
 			}
 		}
-
 		for range ticker.C {
-			log.Infoln("[GEO] updating database every %d hours", updateInterval)
 			if err := UpdateGeoDatabases(); err != nil {
-				log.Errorln("[GEO] Failed to update GEO database: %s", err.Error())
+				log.Errorln("[GEO] Update: %s", err)
 			}
 		}
 	}()

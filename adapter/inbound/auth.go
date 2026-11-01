@@ -3,18 +3,17 @@ package inbound
 import (
 	"net"
 	"net/netip"
+	"slices"
 
 	C "github.com/metacubex/mihomo/constant"
 )
 
-var skipAuthPrefixes []netip.Prefix
-
 func SetSkipAuthPrefixes(prefixes []netip.Prefix) {
-	skipAuthPrefixes = prefixes
+	UpdateAccessPolicy(AccessPolicyPatch{SkipAuthPrefixes: &prefixes})
 }
 
 func SkipAuthPrefixes() []netip.Prefix {
-	return skipAuthPrefixes
+	return slices.Clone(accessPolicy.Load().SkipAuthPrefixes)
 }
 
 func SkipAuthRemoteAddr(addr net.Addr) bool {
@@ -34,5 +33,5 @@ func SkipAuthRemoteAddress(addr string) bool {
 }
 
 func skipAuth(addr netip.Addr) bool {
-	return prefixesContains(skipAuthPrefixes, addr)
+	return prefixesContains(accessPolicy.Load().SkipAuthPrefixes, addr)
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/metacubex/mihomo/common/utils"
@@ -24,15 +25,15 @@ const (
 )
 
 var (
-	etag = false
+	etag atomic.Bool
 )
 
 func ETag() bool {
-	return etag
+	return etag.Load()
 }
 
 func SetETag(b bool) {
-	etag = b
+	etag.Store(b)
 }
 
 func safeWrite(path string, buf []byte) error {
@@ -124,7 +125,8 @@ func (h *HTTPVehicle) Read(ctx context.Context, oldHash utils.HashType) (buf []b
 	defer cancel()
 	header := h.header
 	setIfNoneMatch := false
-	if etag && oldHash.IsValid() {
+	etagEnabled := etag.Load()
+	if etagEnabled && oldHash.IsValid() {
 		etagWithHash := cachefile.Cache().GetETagWithHash(h.url)
 		if oldHash.Equal(etagWithHash.Hash) && etagWithHash.ETag != "" {
 			if header == nil {
@@ -162,7 +164,7 @@ func (h *HTTPVehicle) Read(ctx context.Context, oldHash utils.HashType) (buf []b
 		return
 	}
 	hash = utils.MakeHash(buf)
-	if etag {
+	if etagEnabled {
 		cachefile.Cache().SetETagWithHash(h.url, cachefile.EtagWithHash{
 			Hash: hash,
 			ETag: resp.Header.Get("ETag"),

@@ -1,12 +1,14 @@
 package constant
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	P "path"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/constant/features"
@@ -14,7 +16,7 @@ import (
 
 const Name = "mihomo"
 
-var (
+const (
 	GeositeName   = "GeoSite.dat"
 	GeoipName     = "GeoIP.dat"
 	ASNName       = "ASN.mmdb"
@@ -52,6 +54,8 @@ var Path = func() *path {
 }()
 
 type path struct {
+	mu              sync.RWMutex
+	generation      uint64
 	homeDir         string
 	configFile      string
 	allowUnsafePath bool
@@ -60,19 +64,30 @@ type path struct {
 
 // SetHomeDir is used to set the configuration path
 func SetHomeDir(root string) {
-	Path.homeDir = root
+	Path.mu.Lock()
+	defer Path.mu.Unlock()
+	if Path.homeDir != root {
+		Path.homeDir = root
+		Path.generation++
+	}
 }
 
 // SetConfig is used to set the configuration file
 func SetConfig(file string) {
+	Path.mu.Lock()
+	defer Path.mu.Unlock()
 	Path.configFile = file
 }
 
 func (p *path) HomeDir() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return p.homeDir
 }
 
 func (p *path) Config() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return p.configFile
 }
 
@@ -89,8 +104,11 @@ func (p *path) IsSafePath(path string) bool {
 	if p.allowUnsafePath || features.CMFA {
 		return true
 	}
-	path = p.Resolve(path)
-	for _, safePath := range p.SafePaths() {
+	safePaths := p.SafePaths()
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(safePaths[0], path)
+	}
+	for _, safePath := range safePaths {
 		if rel, err := filepath.Rel(safePath, path); err == nil {
 			if filepath.IsLocal(rel) {
 				return true
@@ -101,6 +119,8 @@ func (p *path) IsSafePath(path string) bool {
 }
 
 func (p *path) SafePaths() []string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return append([]string{p.homeDir}, p.safePaths...) // add homedir to safePaths
 }
 
@@ -123,114 +143,92 @@ func (p *path) GetPathByHash(prefix, name string) string {
 	return filepath.Join(p.HomeDir(), prefix, filename)
 }
 
-func (p *path) MMDB() string {
-	files, err := os.ReadDir(p.homeDir)
-	if err != nil {
-		return ""
+// GeoPaths is one path snapshot. Queries never rewrite canonical file names.
+type GeoPaths struct {
+	HomeDir    string
+	Generation uint64
+	MMDB       string
+	ASN        string
+	GeoIP      string
+	GeoSite    string
+	BundleMRS  string
+}
+
+func (p *path) Generation() uint64 {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.generation
+}
+
+var ErrGeoPathsChanged = errors.New("GEO paths changed during update")
+
+// WithGeoPaths keeps a file publication in its original home generation. The
+// callback must not query or modify Path; use the supplied immutable snapshot.
+func (p *path) WithGeoPaths(paths GeoPaths, publish func() error) error {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if p.generation != paths.Generation || p.homeDir != paths.HomeDir {
+		return ErrGeoPathsChanged
 	}
-	for _, fi := range files {
-		if fi.IsDir() {
-			// 目录则直接跳过
+	return publish()
+}
+
+func (p *path) GeoPaths() GeoPaths {
+	p.mu.RLock()
+	home, generation := p.homeDir, p.generation
+	p.mu.RUnlock()
+	paths := GeoPaths{
+		HomeDir: home, Generation: generation,
+		MMDB: P.Join(home, "geoip.metadb"), ASN: P.Join(home, ASNName),
+		GeoIP: P.Join(home, GeoipName), GeoSite: P.Join(home, GeositeName),
+		BundleMRS: P.Join(home, BundleMRSName),
+	}
+	files, _ := os.ReadDir(home)
+	var foundMMDB, foundASN, foundIP, foundSite, foundBundle bool
+	for _, file := range files {
+		if file.IsDir() {
 			continue
-		} else {
-			if strings.EqualFold(fi.Name(), "Country.mmdb") ||
-				strings.EqualFold(fi.Name(), "geoip.db") ||
-				strings.EqualFold(fi.Name(), "geoip.metadb") {
-				GeoipName = fi.Name()
-				return P.Join(p.homeDir, fi.Name())
+		}
+		name := file.Name()
+		switch strings.ToLower(name) {
+		case "country.mmdb", "geoip.db", "geoip.metadb":
+			if !foundMMDB {
+				paths.MMDB = P.Join(home, name)
+				foundMMDB = true
+			}
+		case "asn.mmdb":
+			if !foundASN {
+				paths.ASN = P.Join(home, name)
+				foundASN = true
+			}
+		case "geoip.dat":
+			if !foundIP {
+				paths.GeoIP = P.Join(home, name)
+				foundIP = true
+			}
+		case "geosite.dat":
+			if !foundSite {
+				paths.GeoSite = P.Join(home, name)
+				foundSite = true
+			}
+		case "bundlemrs.7z":
+			if !foundBundle {
+				paths.BundleMRS = P.Join(home, name)
+				foundBundle = true
 			}
 		}
 	}
-	return P.Join(p.homeDir, "geoip.metadb")
+	return paths
 }
 
-func (p *path) ASN() string {
-	files, err := os.ReadDir(p.homeDir)
-	if err != nil {
-		return ""
-	}
-	for _, fi := range files {
-		if fi.IsDir() {
-			// 目录则直接跳过
-			continue
-		} else {
-			if strings.EqualFold(fi.Name(), "ASN.mmdb") {
-				ASNName = fi.Name()
-				return P.Join(p.homeDir, fi.Name())
-			}
-		}
-	}
-	return P.Join(p.homeDir, ASNName)
-}
-
-func (p *path) BundleMRS() string {
-	files, err := os.ReadDir(p.homeDir)
-	if err != nil {
-		return ""
-	}
-	for _, fi := range files {
-		if fi.IsDir() {
-			// 目录则直接跳过
-			continue
-		} else {
-			if strings.EqualFold(fi.Name(), "BundleMRS.7z") {
-				BundleMRSName = fi.Name()
-				return P.Join(p.homeDir, fi.Name())
-			}
-		}
-	}
-	return P.Join(p.homeDir, BundleMRSName)
-}
-
-func (p *path) OldCache() string {
-	return P.Join(p.homeDir, ".cache")
-}
-
-func (p *path) Cache() string {
-	return P.Join(p.homeDir, "cache.db")
-}
-
-func (p *path) GeoIP() string {
-	files, err := os.ReadDir(p.homeDir)
-	if err != nil {
-		return ""
-	}
-	for _, fi := range files {
-		if fi.IsDir() {
-			// 目录则直接跳过
-			continue
-		} else {
-			if strings.EqualFold(fi.Name(), "GeoIP.dat") {
-				GeoipName = fi.Name()
-				return P.Join(p.homeDir, fi.Name())
-			}
-		}
-	}
-	return P.Join(p.homeDir, "GeoIP.dat")
-}
-
-func (p *path) GeoSite() string {
-	files, err := os.ReadDir(p.homeDir)
-	if err != nil {
-		return ""
-	}
-	for _, fi := range files {
-		if fi.IsDir() {
-			// 目录则直接跳过
-			continue
-		} else {
-			if strings.EqualFold(fi.Name(), "GeoSite.dat") {
-				GeositeName = fi.Name()
-				return P.Join(p.homeDir, fi.Name())
-			}
-		}
-	}
-	return P.Join(p.homeDir, "GeoSite.dat")
-}
-
-func (p *path) GetAssetLocation(file string) string {
-	return P.Join(p.homeDir, file)
-}
+func (p *path) MMDB() string                        { return p.GeoPaths().MMDB }
+func (p *path) ASN() string                         { return p.GeoPaths().ASN }
+func (p *path) BundleMRS() string                   { return p.GeoPaths().BundleMRS }
+func (p *path) GeoIP() string                       { return p.GeoPaths().GeoIP }
+func (p *path) GeoSite() string                     { return p.GeoPaths().GeoSite }
+func (p *path) OldCache() string                    { return P.Join(p.HomeDir(), ".cache") }
+func (p *path) Cache() string                       { return P.Join(p.HomeDir(), "cache.db") }
+func (p *path) GetAssetLocation(file string) string { return p.Resolve(file) }
 
 func (p *path) GetExecutableFullPath() string {
 	exePath, err := os.Executable()

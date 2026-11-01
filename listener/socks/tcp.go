@@ -133,11 +133,12 @@ func NewWithConfig(config LC.AuthServer, lc C.InboundListenConfig, tunnel C.Tunn
 			}
 			store := config.AuthStore
 			if isDefault || store == authStore.Default { // only apply on default listener
-				if !inbound.IsRemoteAddrDisAllowed(c.RemoteAddr()) {
+				allowed, skipAuthentication := inbound.EvaluateRemoteAddr(c.RemoteAddr())
+				if !allowed {
 					_ = c.Close()
 					continue
 				}
-				if inbound.SkipAuthRemoteAddr(c.RemoteAddr()) {
+				if skipAuthentication {
 					store = authStore.Nil
 				}
 			}

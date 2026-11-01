@@ -2,6 +2,7 @@ package geodata
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/metacubex/mihomo/component/geodata/router"
 	C "github.com/metacubex/mihomo/constant"
@@ -12,16 +13,19 @@ type loader struct {
 }
 
 func (l *loader) LoadGeoSite(list string) ([]*router.Domain, error) {
-	return l.LoadSiteByPath(C.GeositeName, list)
+	return l.LoadSiteByPath(C.Path.GeoSite(), list)
 }
 
 func (l *loader) LoadGeoIP(country string) ([]*router.CIDR, error) {
-	return l.LoadIPByPath(C.GeoipName, country)
+	return l.LoadIPByPath(C.Path.GeoIP(), country)
 }
 
 var loaders map[string]func() LoaderImplementation
+var loadersMutex sync.RWMutex
 
 func RegisterGeoDataLoaderImplementationCreator(name string, loader func() LoaderImplementation) {
+	loadersMutex.Lock()
+	defer loadersMutex.Unlock()
 	if loaders == nil {
 		loaders = map[string]func() LoaderImplementation{}
 	}
@@ -29,7 +33,10 @@ func RegisterGeoDataLoaderImplementationCreator(name string, loader func() Loade
 }
 
 func getGeoDataLoaderImplementation(name string) (LoaderImplementation, error) {
-	if geoLoader, ok := loaders[name]; ok {
+	loadersMutex.RLock()
+	geoLoader, ok := loaders[name]
+	loadersMutex.RUnlock()
+	if ok {
 		return geoLoader(), nil
 	}
 	return nil, fmt.Errorf("unable to locate GeoData loader %s", name)

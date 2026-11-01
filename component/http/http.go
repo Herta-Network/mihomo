@@ -7,6 +7,7 @@ import (
 	URL "net/url"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/metacubex/mihomo/component/ca"
@@ -18,15 +19,18 @@ import (
 )
 
 var (
-	ua string
+	ua atomic.Pointer[string]
 )
 
 func UA() string {
-	return ua
+	if current := ua.Load(); current != nil {
+		return *current
+	}
+	return ""
 }
 
 func SetUA(UA string) {
-	ua = UA
+	ua.Store(&UA)
 }
 
 func HttpRequest(ctx context.Context, url, method string, header map[string][]string, body io.Reader, options ...Option) (*http.Response, error) {
