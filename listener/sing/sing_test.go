@@ -88,3 +88,34 @@ func TestPacketConnectionCloseUnblocksWriteBack(t *testing.T) {
 		t.Fatal("stale packet writer still usable")
 	}
 }
+
+func TestPacketTakeBufferKeepsReplyEndpoint(t *testing.T) {
+	buffer := buf.NewSize(64)
+	buffer.Resize(16, 0)
+	buffer.WriteString("request")
+	conn := &ownershipReplyConn{}
+	var writer network.NetPacketWriter = conn
+	p := &packet{buff: buffer, writer: &writer, mutex: &sync.Mutex{}}
+	if taken := p.TakeBuffer(); taken != buffer || taken.Start() != 16 {
+		t.Fatal("transfer lost the buffer or its headroom")
+	}
+	p.Drop()
+	if string(buffer.Bytes()) != "request" || p.TakeBuffer() != nil {
+		t.Fatal("Drop released transferred storage or repeated transfer succeeded")
+	}
+	addr := &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 53}
+	if n, err := p.WriteBack([]byte("reply"), addr); err != nil || n != 5 || conn.writes != 1 {
+		t.Fatalf("reply endpoint invalid after payload transfer: n=%d err=%v", n, err)
+	}
+	buffer.Release()
+}
+
+type ownershipReplyConn struct {
+	network.NetPacketWriter
+	writes int
+}
+
+func (c *ownershipReplyConn) WriteTo(b []byte, _ net.Addr) (int, error) {
+	c.writes++
+	return len(b), nil
+}

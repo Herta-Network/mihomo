@@ -11,9 +11,11 @@ import (
 
 // PipeDeadline is an abstraction for handling timeouts.
 type PipeDeadline struct {
-	mu     sync.Mutex // Guards timer and cancel
-	timer  *time.Timer
-	cancel chan struct{} // Must be non-nil
+	mu          sync.Mutex // Guards timer, its active state, and cancel
+	timer       *time.Timer
+	timerActive bool
+	stopped     bool
+	cancel      chan struct{} // Must be non-nil
 }
 
 func MakePipeDeadline() PipeDeadline {
@@ -30,10 +32,10 @@ func (d *PipeDeadline) Set(t time.Time) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if d.timer != nil && !d.timer.Stop() {
-		<-d.cancel // Wait for the timer callback to finish and close cancel
+	if d.stopped {
+		return
 	}
-	d.timer = nil
+	d.stopTimer()
 
 	// Time is zero, then there is no deadline.
 	closed := isClosedChan(d.cancel)
@@ -49,9 +51,12 @@ func (d *PipeDeadline) Set(t time.Time) {
 		if closed {
 			d.cancel = make(chan struct{})
 		}
-		d.timer = time.AfterFunc(dur, func() {
-			close(d.cancel)
-		})
+		if d.timer == nil {
+			d.timer = time.AfterFunc(dur, func() { close(d.cancel) })
+		} else {
+			d.timer.Reset(dur)
+		}
+		d.timerActive = true
 		return
 	}
 
@@ -59,6 +64,25 @@ func (d *PipeDeadline) Set(t time.Time) {
 	if !closed {
 		close(d.cancel)
 	}
+}
+
+// stopTimer runs with mu held. A previously cleared deadline has an inactive
+// timer and an open cancel channel; waiting on that channel would deadlock.
+func (d *PipeDeadline) stopTimer() {
+	if d.timerActive && !d.timer.Stop() {
+		<-d.cancel // The callback finishes before Set can replace cancel.
+	}
+	d.timerActive = false
+}
+
+// stop prevents both existing and concurrently refreshed timers from retaining
+// a closed connection. The connection itself wakes its blocked readers.
+func (d *PipeDeadline) stop() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.stopped = true
+	d.stopTimer()
+	d.timer = nil
 }
 
 // Wait returns a channel that is closed when the deadline is exceeded.

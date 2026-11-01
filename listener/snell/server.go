@@ -26,11 +26,10 @@ import (
 	obfs "github.com/metacubex/mihomo/transport/simple-obfs"
 	"github.com/metacubex/mihomo/transport/snell"
 
+	"github.com/metacubex/sing/common/buf"
 	M "github.com/metacubex/sing/common/metadata"
 	SS "github.com/sagernet/sing-snell"
 )
-
-const maxPacketLength = 0x3fff
 
 type Listener struct {
 	closed    atomic.Bool
@@ -300,17 +299,17 @@ func (l *Listener) handleUDP(stream *snell.Snell, clientID string, tunnel C.Tunn
 	connID := utils.NewUUIDV4().String()
 	localAddr := N.NewCustomAddr(C.SNELL.String(), connID, stream.RemoteAddr())
 	writeMu := &sync.Mutex{}
-	buf := make([]byte, maxPacketLength)
 	for {
-		n, err := stream.Read(buf)
+		buffer, err := stream.ReadPacketBuffer()
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, shadowaead.ErrZeroChunk) {
 				return nil
 			}
 			return err
 		}
-		request, err := snell.ParseUDPRequest(buf[:n])
+		request, err := snell.ParseUDPRequest(buffer.Bytes())
 		if err != nil {
+			buffer.Release()
 			return err
 		}
 		metadata := l.metadata(C.UDP, request.Host, request.Port, stream, clientID, additions...)
@@ -319,13 +318,13 @@ func (l *Listener) handleUDP(stream *snell.Snell, clientID string, tunnel C.Tunn
 			metadata.DstIP = request.Ip
 		}
 
-		payload := append([]byte(nil), request.Payload...)
+		buffer.Advance(buffer.Len() - len(request.Payload))
 		packet := &udpPacket{
-			data:      payload,
+			buffer:    buffer,
 			conn:      stream,
 			writeMu:   writeMu,
 			localAddr: localAddr,
-			dstAddr:   metadata.UDPAddr(),
+			dstAddr:   metadata.AddrPort(),
 		}
 		tunnel.HandleUDPPacket(packet, metadata)
 	}
@@ -423,20 +422,29 @@ func (c *tcpRequestConn) Close() error {
 }
 
 type udpPacket struct {
-	data      []byte
+	buffer    *buf.Buffer
 	conn      *snell.Snell
 	writeMu   *sync.Mutex
 	localAddr net.Addr
-	dstAddr   net.Addr
+	dstAddr   netip.AddrPort
 }
 
 func (p *udpPacket) Data() []byte {
-	return p.data
+	if p.buffer == nil {
+		return nil
+	}
+	return p.buffer.Bytes()
+}
+
+func (p *udpPacket) TakeBuffer() *buf.Buffer {
+	buffer := p.buffer
+	p.buffer = nil
+	return buffer
 }
 
 func (p *udpPacket) WriteBack(b []byte, addr net.Addr) (int, error) {
-	if addr == nil {
-		addr = p.dstAddr
+	if addr == nil && p.dstAddr.IsValid() {
+		addr = net.UDPAddrFromAddrPort(p.dstAddr)
 	}
 	p.writeMu.Lock()
 	defer p.writeMu.Unlock()
@@ -444,7 +452,8 @@ func (p *udpPacket) WriteBack(b []byte, addr net.Addr) (int, error) {
 }
 
 func (p *udpPacket) Drop() {
-	p.data = nil
+	p.buffer.Release()
+	p.buffer = nil
 }
 
 func (p *udpPacket) LocalAddr() net.Addr {

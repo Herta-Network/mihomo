@@ -167,7 +167,11 @@ func (p *pipe) SetWriteDeadline(t time.Time) error {
 }
 
 func (p *pipe) Close() error {
-	p.once.Do(func() { close(p.localDone) })
+	p.once.Do(func() {
+		close(p.localDone)
+		p.readDeadline.stop()
+		p.writeDeadline.stop()
+	})
 	return nil
 }
 

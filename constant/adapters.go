@@ -12,6 +12,7 @@ import (
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/sing/common/buf"
 )
 
 // Adapter Type
@@ -285,6 +286,14 @@ type UDPPacketInAddr interface {
 	InAddr() net.Addr
 }
 
+// PacketBuffer transfers an exclusively owned payload to the sender, preserving
+// its headroom. A nil result leaves Data and Drop unchanged. After a successful
+// transfer Data must not be used; Drop still releases the packet's other state
+// but must not release the transferred buffer. WriteBack remains valid.
+type PacketBuffer interface {
+	TakeBuffer() *buf.Buffer
+}
+
 // PacketAdapter is a UDP Packet adapter for socks/redir/tun
 type PacketAdapter interface {
 	UDPPacket
@@ -308,6 +317,13 @@ func (s *packetAdapter) Metadata() *Metadata {
 // Key is a SNAT key
 func (s *packetAdapter) Key() string {
 	return s.key
+}
+
+func (s *packetAdapter) TakeBuffer() *buf.Buffer {
+	if packet, ok := s.UDPPacket.(PacketBuffer); ok {
+		return packet.TakeBuffer()
+	}
+	return nil
 }
 
 func NewPacketAdapter(packet UDPPacket, metadata *Metadata) PacketAdapter {

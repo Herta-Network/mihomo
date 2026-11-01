@@ -64,7 +64,7 @@ FOR:
 
 	if c.netPacketConn.disablePipe.Load() {
 		return c.enhancePacketConn.WaitReadFrom()
-	} else if c.netPacketConn.deadline.Load().IsZero() {
+	} else if !c.netPacketConn.deadlineSet.Load() {
 		c.netPacketConn.inRead.Store(true)
 		defer c.netPacketConn.inRead.Store(false)
 		data, put, addr, err = c.enhancePacketConn.WaitReadFrom()

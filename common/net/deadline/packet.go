@@ -19,7 +19,7 @@ type readResult struct {
 
 type NetPacketConn struct {
 	net.PacketConn
-	deadline     atomic.TypedValue[time.Time]
+	deadlineSet  atomic.Bool
 	pipeDeadline PipeDeadline
 	disablePipe  atomic.Bool
 	inRead       atomic.Bool
@@ -101,7 +101,7 @@ FOR:
 
 	if c.disablePipe.Load() {
 		return c.PacketConn.ReadFrom(p)
-	} else if c.deadline.Load().IsZero() {
+	} else if !c.deadlineSet.Load() {
 		c.inRead.Store(true)
 		defer c.inRead.Store(false)
 		n, addr, err = c.PacketConn.ReadFrom(p)
@@ -130,13 +130,16 @@ func (c *NetPacketConn) pipeReadFrom(size int) {
 }
 
 func (c *NetPacketConn) SetReadDeadline(t time.Time) error {
+	if c.isClosed() {
+		return net.ErrClosed
+	}
 	if c.disablePipe.Load() {
 		return c.PacketConn.SetReadDeadline(t)
 	} else if c.inRead.Load() {
 		c.disablePipe.Store(true)
 		return c.PacketConn.SetReadDeadline(t)
 	}
-	c.deadline.Store(t)
+	c.deadlineSet.Store(!t.IsZero())
 	c.pipeDeadline.Set(t)
 	return nil
 }
@@ -156,7 +159,7 @@ func (c *NetPacketConn) ReaderReplaceable() bool {
 	default:
 		return false // pipe reading
 	}
-	return c.disablePipe.Load() || c.deadline.Load().IsZero()
+	return c.disablePipe.Load() || !c.deadlineSet.Load()
 }
 
 func (c *NetPacketConn) WriterReplaceable() bool {
@@ -177,6 +180,7 @@ func (c *NetPacketConn) NeedAdditionalReadDeadline() bool {
 func (c *NetPacketConn) Close() error {
 	c.closeOnce.Do(func() {
 		close(c.done)
+		c.pipeDeadline.stop()
 		c.publishMutex.Lock()
 		select {
 		case result := <-c.resultCh:

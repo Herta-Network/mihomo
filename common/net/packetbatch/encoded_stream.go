@@ -6,7 +6,6 @@ import (
 	"net"
 
 	"github.com/metacubex/sing/common/buf"
-	"github.com/metacubex/sing/common/bufio"
 	M "github.com/metacubex/sing/common/metadata"
 	N "github.com/metacubex/sing/common/network"
 )
@@ -23,7 +22,7 @@ type StreamEncoderOptions struct {
 // logical packet's encoded byte boundary is recorded before a joined write.
 // This is for codecs whose write path never waits for a transport response.
 func NewStreamEncoder(transport net.Conn, build func(net.Conn) (net.Conn, error), options StreamEncoderOptions) (*StreamEncoder, error) {
-	sink := &streamSink{Conn: transport}
+	sink := &streamSink{Conn: transport, vector: NewVectorWriter(transport)}
 	codec, err := build(sink)
 	if err != nil {
 		return nil, err
@@ -102,7 +101,7 @@ func (c *StreamEncoder) WritePacketBatchCount(buffers []*buf.Buffer, destination
 		}
 		c.sink.active = false
 		total := c.sink.size
-		n, writeErr := bufio.NewVectorisedWriterWithCount(c.sink.Conn).WriteVectorisedCount(c.sink.records)
+		n, writeErr := c.sink.vector.WriteVectorisedCount(c.sink.records)
 		c.sink.reset()
 		if n < 0 || n > total {
 			n, writeErr = 0, io.ErrShortWrite
@@ -154,6 +153,7 @@ type streamSink struct {
 	size        int64
 	current     *buf.Buffer
 	transferred bool
+	vector      *VectorWriter
 }
 
 func (c *streamSink) capture(buffer *buf.Buffer) error {
@@ -201,7 +201,7 @@ func (c *streamSink) WriteVectorised(buffers []*buf.Buffer) error {
 }
 func (c *streamSink) WriteVectorisedCount(buffers []*buf.Buffer) (int64, error) {
 	if !c.active {
-		return bufio.NewVectorisedWriterWithCount(c.Conn).WriteVectorisedCount(buffers)
+		return c.vector.WriteVectorisedCount(buffers)
 	}
 	var n int64
 	for i, b := range buffers {
@@ -231,7 +231,7 @@ func (c *streamSink) UpstreamWriter() any    { return nil }
 // NewPacketStreamEncoder is the packet-only form for framed stream codecs
 // whose public wrapper intentionally exposes only net.PacketConn.
 func NewPacketStreamEncoder(transport net.Conn, build func(net.Conn) net.PacketConn, options StreamEncoderOptions) *StreamEncoder {
-	sink := &streamSink{Conn: transport}
+	sink := &streamSink{Conn: transport, vector: NewVectorWriter(transport)}
 	codec := build(sink)
 	return &StreamEncoder{Conn: transport, reader: newPacketReader(codec), packets: newPacketCodec(codec), sink: sink, options: options, headroom: N.NewReadWaitOptions(nil, codec)}
 }

@@ -49,9 +49,15 @@ The fork's existing `udpnat` implementation is selected through the dependency;
 `udpnat2` is not inserted as a second NAT layer.
 
 Uploads drain at most four packets already queued for the same connection;
-they do not wait for more packets. Isolated packets, `with_low_memory` builds,
-and wrappers without an explicit progress capability use their scalar write
-path. Pending packets are flushed before resolving a new destination.
+they do not wait for more packets. Sing and legacy Snell inbounds transfer owned
+buffers through `PacketBuffer.TakeBuffer`, retaining their headroom. Single
+owned packets also use counted writes, including in `with_low_memory` builds,
+without collecting additional packets. Borrowed isolated packets and wrappers
+without an explicit progress capability retain their scalar write path.
+Pending packets are flushed before resolving a new destination.
+The per-connection sender uses a bounded 128-slot deque ring and coalesces worker
+wakeups. FIFO order, full-queue drops and Close/Send ownership remain unchanged.
+Deadline refreshes reuse their timer; closing the owner prevents timer rearming.
 
 `PacketBatchWriterWithCount.WritePacketBatchCount` reports the number of
 completely written packets at the start of the batch, including when a later
@@ -126,6 +132,10 @@ The [Snell performance report](benchmarks/snell-2026-11-01.md) compares the
 committed Snell implementation with its parent using actual local packet traffic.
 It reports both throughput gains and increased allocation traffic; it does not
 claim a general memory reduction or measure all of the adapters above.
+The subsequent [UDP allocation report](benchmarks/udp-allocation-2026-11-01.md)
+measures owned-buffer transfer, in-place Snell v3 records and reused counted
+vector storage. It distinguishes zero-allocation steady stages from the full
+loopback path, which still allocates.
 
 Datagram receive capacity is independent of low-memory stream buffers. Generic
 packet connections allow a full UDP datagram, and legacy Snell reads reserve

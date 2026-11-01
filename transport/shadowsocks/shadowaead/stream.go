@@ -7,7 +7,9 @@ import (
 	"io"
 	"net"
 
+	"github.com/metacubex/mihomo/common/net/packetbatch"
 	"github.com/metacubex/mihomo/common/pool"
+	"github.com/metacubex/sing/common/buf"
 )
 
 const (
@@ -107,9 +109,63 @@ func (w *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 type Reader struct {
 	io.Reader
 	cipher.AEAD
-	nonce [32]byte // should be sufficient for most nonce sizes
-	buf   []byte   // to be put back into bufPool
-	off   int      // offset to unconsumed part of buf
+	nonce        [32]byte // should be sufficient for most nonce sizes
+	buf          []byte   // to be put back into bufPool
+	off          int      // offset to unconsumed part of buf
+	packetHeader []byte
+}
+
+// ReadPacketBuffer returns the remainder of one decrypted record with owned
+// storage. Reading its length first avoids retaining maximum-size buffers for
+// small datagrams. The reserved prefix can hold the next record's length/tag.
+func (r *Reader) ReadPacketBuffer() (*buf.Buffer, error) {
+	tag := r.Overhead()
+	front := 2 + tag
+	if r.buf != nil {
+		var buffer *buf.Buffer
+		if r.off < len(r.buf) {
+			buffer = buf.NewSize(front + len(r.buf) - r.off + tag)
+			buffer.Resize(front, 0)
+			_, _ = buffer.Write(r.buf[r.off:])
+		}
+		pool.Put(r.buf[:cap(r.buf)])
+		r.buf, r.off = nil, 0
+		if buffer != nil {
+			return buffer, nil
+		}
+		// WriteTo retains its fully consumed workspace at EOF. It is not a
+		// pending record, so continue reading instead of emitting an empty one.
+	}
+	if r.packetHeader == nil {
+		r.packetHeader = make([]byte, front)
+	}
+	if _, err := io.ReadFull(r.Reader, r.packetHeader); err != nil {
+		return nil, err
+	}
+	nonce := r.nonce[:r.NonceSize()]
+	_, err := r.Open(r.packetHeader[:0], nonce, r.packetHeader, nil)
+	increment(nonce)
+	if err != nil {
+		return nil, err
+	}
+	size := (int(r.packetHeader[0])<<8 + int(r.packetHeader[1])) & payloadSizeMask
+	if size == 0 {
+		return nil, ErrZeroChunk
+	}
+	buffer := buf.NewSize(front + size + tag)
+	buffer.Resize(front, size+tag)
+	if _, err = io.ReadFull(r.Reader, buffer.Bytes()); err != nil {
+		buffer.Release()
+		return nil, err
+	}
+	_, err = r.Open(buffer.Bytes()[:0], nonce, buffer.Bytes(), nil)
+	increment(nonce)
+	if err != nil {
+		buffer.Release()
+		return nil, err
+	}
+	buffer.Resize(front, size)
+	return buffer, nil
 }
 
 // NewReader wraps an io.Reader with authenticated decryption.
@@ -222,8 +278,9 @@ func increment(b []byte) {
 type Conn struct {
 	net.Conn
 	Cipher
-	r *Reader
-	w *Writer
+	r            *Reader
+	w            *Writer
+	packetWriter *packetbatch.VectorWriter
 }
 
 // NewConn wraps a stream-oriented net.Conn with cipher.
@@ -251,6 +308,15 @@ func (c *Conn) Read(b []byte) (int, error) {
 		}
 	}
 	return c.r.Read(b)
+}
+
+func (c *Conn) ReadPacketBuffer() (*buf.Buffer, error) {
+	if c.r == nil {
+		if err := c.initReader(); err != nil {
+			return nil, err
+		}
+	}
+	return c.r.ReadPacketBuffer()
 }
 
 func (c *Conn) WriteTo(w io.Writer) (int64, error) {

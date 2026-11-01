@@ -84,7 +84,7 @@ FOR:
 
 	if c.netPacketConn.disablePipe.Load() {
 		return c.singPacketConn.ReadPacket(buffer)
-	} else if c.netPacketConn.deadline.Load().IsZero() {
+	} else if !c.netPacketConn.deadlineSet.Load() {
 		c.netPacketConn.inRead.Store(true)
 		defer c.netPacketConn.inRead.Store(false)
 		destination, err = c.singPacketConn.ReadPacket(buffer)
@@ -170,7 +170,7 @@ FOR:
 
 	if c.netPacketConn.disablePipe.Load() {
 		return c.packetReadWaiter.WaitReadPacket()
-	} else if c.netPacketConn.deadline.Load().IsZero() {
+	} else if !c.netPacketConn.deadlineSet.Load() {
 		c.netPacketConn.inRead.Store(true)
 		defer c.netPacketConn.inRead.Store(false)
 		return c.packetReadWaiter.WaitReadPacket()

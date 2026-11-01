@@ -19,7 +19,7 @@ type connReadResult struct {
 
 type Conn struct {
 	network.ExtendedConn
-	deadline     atomic.TypedValue[time.Time]
+	deadlineSet  atomic.Bool
 	pipeDeadline PipeDeadline
 	disablePipe  atomic.Bool
 	inRead       atomic.Bool
@@ -64,7 +64,7 @@ func (c *Conn) Read(p []byte) (n int, err error) {
 
 	if c.disablePipe.Load() {
 		return c.ExtendedConn.Read(p)
-	} else if c.deadline.Load().IsZero() {
+	} else if !c.deadlineSet.Load() {
 		c.inRead.Store(true)
 		defer c.inRead.Store(false)
 		return c.ExtendedConn.Read(p)
@@ -110,7 +110,7 @@ func (c *Conn) ReadBuffer(buffer *buf.Buffer) (err error) {
 
 	if c.disablePipe.Load() {
 		return c.ExtendedConn.ReadBuffer(buffer)
-	} else if c.deadline.Load().IsZero() {
+	} else if !c.deadlineSet.Load() {
 		c.inRead.Store(true)
 		defer c.inRead.Store(false)
 		return c.ExtendedConn.ReadBuffer(buffer)
@@ -129,7 +129,7 @@ func (c *Conn) SetReadDeadline(t time.Time) error {
 		c.disablePipe.Store(true)
 		return c.ExtendedConn.SetReadDeadline(t)
 	}
-	c.deadline.Store(t)
+	c.deadlineSet.Store(!t.IsZero())
 	c.pipeDeadline.Set(t)
 	return nil
 }
@@ -146,7 +146,7 @@ func (c *Conn) ReaderReplaceable() bool {
 	default:
 		return false // pipe reading
 	}
-	return c.disablePipe.Load() || c.deadline.Load().IsZero()
+	return c.disablePipe.Load() || !c.deadlineSet.Load()
 }
 
 func (c *Conn) WriterReplaceable() bool {
@@ -155,4 +155,9 @@ func (c *Conn) WriterReplaceable() bool {
 
 func (c *Conn) Upstream() any {
 	return c.ExtendedConn
+}
+
+func (c *Conn) Close() error {
+	c.pipeDeadline.stop()
+	return c.ExtendedConn.Close()
 }

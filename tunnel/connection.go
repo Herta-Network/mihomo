@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/metacubex/mihomo/common/deque"
 	N "github.com/metacubex/mihomo/common/net"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/features"
@@ -21,34 +22,54 @@ import (
 type packetSender struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
-	ch        chan C.PacketAdapter
+	ready     chan struct{}
+	queue     deque.Deque[C.PacketAdapter]
 	sendMutex sync.Mutex
 
 	// destination NAT mapping
-	originToTarget map[string]netip.Addr
+	originToTarget map[packetDestination]netip.Addr
 	targetToOrigin map[netip.Addr]netip.Addr
 	mappingMutex   sync.RWMutex
+
+	// Process is the sole owner of this scratch space. Reuse it across writes:
+	// slices passed to an interface otherwise escape once per batch.
+	buffers      [packetSendBatchSize]*buf.Buffer
+	destinations [packetSendBatchSize]M.Socksaddr
 }
 
-// newPacketSender return a chan based C.PacketSender
+type packetDestination struct {
+	ip   netip.Addr
+	host string
+}
+
+func destinationKey(metadata *C.Metadata) packetDestination {
+	if metadata.Host != "" {
+		return packetDestination{host: metadata.Host}
+	}
+	return packetDestination{ip: metadata.DstIP}
+}
+
+// newPacketSender returns a bounded, nonblocking packet sender.
 // It ensures that packets can be sent sequentially and without blocking
 func newPacketSender() C.PacketSender {
 	ctx, cancel := context.WithCancel(context.Background())
-	ch := make(chan C.PacketAdapter, senderCapacity)
-	return &packetSender{
+	s := &packetSender{
 		ctx:    ctx,
 		cancel: cancel,
-		ch:     ch,
+		ready:  make(chan struct{}, 1),
 
-		originToTarget: make(map[string]netip.Addr),
+		originToTarget: make(map[packetDestination]netip.Addr),
 		targetToOrigin: make(map[netip.Addr]netip.Addr),
 	}
+	s.queue.SetBaseCap(senderCapacity)
+	s.queue.Grow(senderCapacity)
+	return s
 }
 
 func (s *packetSender) AddMapping(originMetadata *C.Metadata, metadata *C.Metadata) {
 	s.mappingMutex.Lock()
 	defer s.mappingMutex.Unlock()
-	originKey := originMetadata.String()
+	originKey := destinationKey(originMetadata)
 	originAddr := originMetadata.DstIP
 	targetAddr := metadata.DstIP
 	if addr := s.originToTarget[originKey]; !addr.IsValid() { // overwrite only if the record is illegal
@@ -68,91 +89,96 @@ func (s *packetSender) RestoreReadFrom(addr netip.Addr) netip.Addr {
 	return addr
 }
 
-func (s *packetSender) packetAddress(pc C.PacketConn, packet C.PacketAdapter) *net.UDPAddr {
+func (s *packetSender) packetAddress(pc C.PacketConn, packet C.PacketAdapter) netip.AddrPort {
 	metadata := packet.Metadata()
 
-	var addr *net.UDPAddr
-
 	s.mappingMutex.RLock()
-	targetAddr := s.originToTarget[metadata.String()]
+	targetAddr := s.originToTarget[destinationKey(metadata)]
 	s.mappingMutex.RUnlock()
 
 	if targetAddr.IsValid() {
-		addr = net.UDPAddrFromAddrPort(netip.AddrPortFrom(targetAddr, metadata.DstPort))
+		return netip.AddrPortFrom(targetAddr, metadata.DstPort)
 	}
 
-	if addr == nil {
-		originMetadata := metadata  // save origin metadata
-		metadata = metadata.Clone() // don't modify PacketAdapter's metadata
+	originMetadata := metadata  // save origin metadata
+	metadata = metadata.Clone() // don't modify PacketAdapter's metadata
 
-		_ = preHandleMetadata(metadata) // error was pre-checked
-		metadata = metadata.Pure()
-		if metadata.Host != "" {
-			// TODO: ResolveUDP may take a long time to block the Process loop
-			//       but we want keep sequence sending so can't open a new goroutine
-			if err := pc.ResolveUDP(s.ctx, metadata); err != nil {
-				log.Warnln("[UDP] Resolve Ip error: %s", err)
-				return nil
-			}
+	_ = preHandleMetadata(metadata) // error was pre-checked
+	metadata = metadata.Pure()
+	if metadata.Host != "" {
+		// TODO: ResolveUDP may take a long time to block the Process loop
+		//       but we want keep sequence sending so can't open a new goroutine
+		if err := pc.ResolveUDP(s.ctx, metadata); err != nil {
+			log.Warnln("[UDP] Resolve Ip error: %s", err)
+			return netip.AddrPort{}
 		}
-
-		if !metadata.DstIP.IsValid() {
-			log.Warnln("[UDP] Destination ip not valid: %#v", metadata)
-			return nil
-		}
-		s.AddMapping(originMetadata, metadata)
-		addr = metadata.UDPAddr()
 	}
-	return addr
+
+	if !metadata.DstIP.IsValid() {
+		log.Warnln("[UDP] Destination ip not valid: %#v", metadata)
+		return netip.AddrPort{}
+	}
+	s.AddMapping(originMetadata, metadata)
+	return metadata.AddrPort()
 }
 
-func (s *packetSender) processPacket(pc C.PacketConn, packet C.PacketAdapter) {
+func (s *packetSender) processPacket(pc C.PacketConn, packet C.PacketAdapter, writer SN.PacketBatchWriterWithCount) {
 	defer packet.Drop()
-	if addr := s.packetAddress(pc, packet); addr != nil && s.ctx.Err() == nil {
-		_ = handleUDPToRemote(packet, pc, addr)
+	if addr := s.packetAddress(pc, packet); addr.IsValid() && s.ctx.Err() == nil {
+		// A single owned packet benefits from the same buffer path without any
+		// read-ahead, including in low-memory builds. Borrowed packets retain
+		// their scalar WriteTo path.
+		if owned, ok := packet.(C.PacketBuffer); ok && writer != nil {
+			if buffer := owned.TakeBuffer(); buffer != nil {
+				s.buffers[0] = SN.NewReadWaitOptions(nil, pc).Copy(buffer)
+				s.destinations[0] = M.SocksaddrFromNetIP(addr)
+				n, err := writer.WritePacketBatchCount(s.buffers[:1], s.destinations[:1])
+				n, _ = bufio.CheckPacketBatchCount(n, 1, err)
+				s.buffers[0], s.destinations[0] = nil, M.Socksaddr{}
+				if n == 1 {
+					_ = pc.SetReadDeadline(time.Now().Add(udpTimeout))
+				}
+				return
+			}
+		}
+		_ = handleUDPToRemote(packet, pc, net.UDPAddrFromAddrPort(addr))
 	}
 }
 
 const packetSendBatchSize = 4
 
 func (s *packetSender) Process(pc C.PacketConn, proxy C.WriteBackProxy) {
-	var writer SN.PacketBatchWriterWithCount
-	canBatch := false
-	if !features.WithLowMemory {
-		writer, canBatch = N.CreatePacketBatchWriterWithCount(pc)
+	writer, canBatch := N.CreatePacketBatchWriterWithCount(pc)
+	if !canBatch {
+		writer = nil
+	}
+	canBatch = canBatch && !features.WithLowMemory
+	batchSize := 1
+	if canBatch {
+		batchSize = packetSendBatchSize
 	}
 	for {
 		select {
 		case <-s.ctx.Done():
 			return
-		case first := <-s.ch:
-			if s.ctx.Err() != nil {
-				first.Drop()
-				return
-			}
-			if !canBatch {
-				if proxy != nil {
-					proxy.UpdateWriteBack(first)
-				}
-				s.processPacket(pc, first)
+		case <-s.ready:
+			var packets [packetSendBatchSize]C.PacketAdapter
+			count := s.takePackets(packets[:batchSize])
+			if count == 0 {
 				continue
 			}
-			packets := [packetSendBatchSize]C.PacketAdapter{first}
-			count := 1
-		drain:
-			for count < len(packets) {
-				select {
-				case packets[count] = <-s.ch:
-					count++
-				default:
-					break drain
+			if s.ctx.Err() != nil {
+				for _, packet := range packets[:count] {
+					packet.Drop()
 				}
+				return
 			}
 			if count == 1 {
+				first := packets[0]
 				if proxy != nil {
 					proxy.UpdateWriteBack(first)
 				}
-				s.processPacket(pc, first)
+				s.processPacket(pc, first, writer)
 				continue
 			}
 			s.processBatch(pc, proxy, writer, packets[:count])
@@ -166,8 +192,8 @@ func (s *packetSender) processBatch(pc C.PacketConn, proxy C.WriteBackProxy, wri
 			packet.Drop()
 		}
 	}()
-	var buffers [packetSendBatchSize]*buf.Buffer
-	var destinations [packetSendBatchSize]M.Socksaddr
+	buffers := s.buffers[:]
+	destinations := s.destinations[:]
 	pending := 0
 	options := SN.NewReadWaitOptions(nil, pc)
 	flush := func() {
@@ -194,7 +220,7 @@ func (s *packetSender) processBatch(pc C.PacketConn, proxy C.WriteBackProxy, wri
 		}
 		// Do not hold earlier packets behind resolution of a new destination.
 		s.mappingMutex.RLock()
-		mapped := s.originToTarget[packet.Metadata().String()].IsValid()
+		mapped := s.originToTarget[destinationKey(packet.Metadata())].IsValid()
 		s.mappingMutex.RUnlock()
 		if !mapped {
 			flush()
@@ -203,35 +229,75 @@ func (s *packetSender) processBatch(pc C.PacketConn, proxy C.WriteBackProxy, wri
 			proxy.UpdateWriteBack(packet)
 		}
 		addr := s.packetAddress(pc, packet)
-		if addr == nil {
+		if !addr.IsValid() {
 			continue
 		}
-		buffers[pending] = options.Copy(buf.As(packet.Data()))
-		destinations[pending] = M.SocksaddrFromNet(addr)
+		if owned, ok := packet.(C.PacketBuffer); ok {
+			buffers[pending] = owned.TakeBuffer()
+		}
+		if buffers[pending] == nil {
+			data := packet.Data()
+			if options.NeedHeadroom() {
+				// A borrowed packet needs one owned copy, but no temporary
+				// buf.As descriptor before allocating its destination buffer.
+				buffer := options.NewBufferSize(len(data))
+				_, _ = buffer.Write(data)
+				buffers[pending] = buffer
+			} else {
+				buffers[pending] = buf.As(data)
+			}
+		} else {
+			buffers[pending] = options.Copy(buffers[pending])
+		}
+		destinations[pending] = M.SocksaddrFromNetIP(addr)
 		pending++
 	}
 }
 
 func (s *packetSender) dropAll() {
 	for {
-		select {
-		case data := <-s.ch:
-			data.Drop() // drop all data still in chan
-		default:
-			return // no data, exit goroutine
+		var packets [packetSendBatchSize]C.PacketAdapter
+		n := s.takePackets(packets[:])
+		if n == 0 {
+			return
 		}
+		for _, packet := range packets[:n] {
+			packet.Drop()
+		}
+	}
+}
+
+// takePackets transfers ownership in FIFO order under one admission lock. A
+// single wakeup represents all queued packets; rearm it only if work remains.
+func (s *packetSender) takePackets(packets []C.PacketAdapter) int {
+	s.sendMutex.Lock()
+	defer s.sendMutex.Unlock()
+	n := min(len(packets), s.queue.Len())
+	for i := 0; i < n; i++ {
+		packets[i] = s.queue.PopFront()
+	}
+	if s.queue.Len() > 0 {
+		s.notify()
+	}
+	return n
+}
+
+func (s *packetSender) notify() {
+	select {
+	case s.ready <- struct{}{}:
+	default:
 	}
 }
 
 func (s *packetSender) Send(packet C.PacketAdapter) {
 	s.sendMutex.Lock()
-	if s.ctx.Err() == nil {
-		select {
-		case s.ch <- packet:
-			s.sendMutex.Unlock()
-			return
-		default:
+	if s.ctx.Err() == nil && s.queue.Len() < senderCapacity {
+		s.queue.PushBack(packet)
+		if s.queue.Len() == 1 {
+			s.notify()
 		}
+		s.sendMutex.Unlock()
+		return
 	}
 	s.sendMutex.Unlock()
 	packet.Drop()

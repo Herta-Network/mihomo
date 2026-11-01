@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 
 	"github.com/metacubex/sing/common/buf"
-	"github.com/metacubex/sing/common/bufio"
 	M "github.com/metacubex/sing/common/metadata"
 )
 
@@ -23,6 +22,7 @@ type State struct {
 	closed    atomic.Bool
 	closeOnce sync.Once
 	closeErr  error
+	vector    *VectorWriter
 }
 
 func (s *State) Check() error {
@@ -94,7 +94,12 @@ func (s *State) WriteStream(writer io.Writer, closer io.Closer, buffers []*buf.B
 			}
 			buffers[i] = prepared
 		}
-		n, writeErr := WriteFrames(writer, buffers[start:end])
+		if s.vector == nil {
+			s.vector = NewVectorWriter(writer)
+		} else {
+			s.vector.Reset(writer)
+		}
+		n, writeErr := writeFrames(s.vector, buffers[start:end])
 		written += n
 		if writeErr != nil {
 			buf.ReleaseMulti(buffers[end:])
@@ -108,6 +113,10 @@ func (s *State) WriteStream(writer io.Writer, closer io.Closer, buffers []*buf.B
 // WriteFrames consumes already-framed buffers and maps byte progress to the
 // complete logical packet prefix. It never bypasses an io.Writer's framing.
 func WriteFrames(writer io.Writer, frames []*buf.Buffer) (written int, err error) {
+	return writeFrames(NewVectorWriter(writer), frames)
+}
+
+func writeFrames(writer *VectorWriter, frames []*buf.Buffer) (written int, err error) {
 	if len(frames) > MaxPackets {
 		buf.ReleaseMulti(frames)
 		return 0, os.ErrInvalid
@@ -122,7 +131,7 @@ func WriteFrames(writer io.Writer, frames []*buf.Buffer) (written int, err error
 		total += int64(frame.Len())
 		ends[i] = total
 	}
-	n, err := bufio.NewVectorisedWriterWithCount(writer).WriteVectorisedCount(frames)
+	n, err := writer.WriteVectorisedCount(frames)
 	if n < 0 || n > total {
 		n, err = 0, io.ErrShortWrite
 	} else if n != total && err == nil {

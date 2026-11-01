@@ -45,6 +45,7 @@ func (p *senderTestPacket) Drop() {
 type senderTestConn struct {
 	C.PacketConn
 	prefix                             int
+	fullBatch                          bool
 	failure                            error
 	batchCalls, scalarCalls, deadlines int
 	packets                            []string
@@ -59,6 +60,9 @@ func (c *senderTestConn) WritePacketBatchCount(buffers []*buf.Buffer, _ []M.Sock
 	c.batchCalls++
 	for _, b := range buffers {
 		c.packets = append(c.packets, string(b.Bytes()))
+	}
+	if c.fullBatch {
+		return len(buffers), c.failure
 	}
 	return c.prefix, c.failure
 }
@@ -191,7 +195,7 @@ func TestPacketSenderSendCloseRaceDropsExactlyOnce(t *testing.T) {
 			t.Fatalf("packet %d drops=%d", i, packets[i].drops.Load())
 		}
 	}
-	if len(s.ch) != 0 {
+	if s.queue.Len() != 0 {
 		t.Fatal("enqueue survived close drain")
 	}
 }

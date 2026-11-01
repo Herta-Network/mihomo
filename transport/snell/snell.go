@@ -64,6 +64,24 @@ func (s *Snell) Read(b []byte) (int, error) {
 	return s.Conn.Read(b)
 }
 
+// ReadPacketBuffer preserves record boundaries and ownership for UDP ingress.
+func (s *Snell) ReadPacketBuffer() (*buf.Buffer, error) {
+	if err := s.ReadReply(); err != nil {
+		return nil, err
+	}
+	if reader, ok := s.Conn.(interface{ ReadPacketBuffer() (*buf.Buffer, error) }); ok {
+		return reader.ReadPacketBuffer()
+	}
+	buffer := buf.NewSize(maxLength)
+	n, err := s.Conn.Read(buffer.FreeBytes())
+	if err != nil {
+		buffer.Release()
+		return nil, err
+	}
+	buffer.Resize(0, n)
+	return buffer, nil
+}
+
 func (s *Snell) ReadReply() error {
 	if s.reply {
 		return nil
@@ -298,7 +316,7 @@ func ParseUDPRequest(packet []byte) (UDPRequest, error) {
 		return UDPRequest{}, errors.New("snell invalid UDP request")
 	}
 	if hostLen := int(packet[1]); hostLen != 0 {
-		if len(packet) <= 2+hostLen+2 {
+		if len(packet) < 2+hostLen+2 {
 			return UDPRequest{}, errors.New("snell invalid UDP domain request")
 		}
 		offset := 2 + hostLen

@@ -260,7 +260,16 @@ type packet struct {
 }
 
 func (c *packet) Data() []byte {
+	if c.buff == nil {
+		return nil
+	}
 	return c.buff.Bytes()
+}
+
+func (c *packet) TakeBuffer() *buf.Buffer {
+	buffer := c.buff
+	c.buff = nil
+	return buffer
 }
 
 // WriteBack wirtes UDP packet with source(ip, port) = `addr`
@@ -288,6 +297,7 @@ func (c *packet) LocalAddr() net.Addr {
 
 func (c *packet) Drop() {
 	c.buff.Release()
+	c.buff = nil
 }
 
 func (c *packet) InAddr() net.Addr {
