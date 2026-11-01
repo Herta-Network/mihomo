@@ -465,9 +465,12 @@ func handleUDPConn(packet C.PacketAdapter) {
 		return sender
 	})
 	if !loaded {
+		// The dial/flow owns its own metadata snapshot and persistent reply
+		// handle. Neither may depend on the queued packet's eventual Drop.
+		originMetadata := metadata.Clone()
+		writeBackProxy := nat.NewWriteBackProxy(packet)
 		dial := func() (C.PacketConn, C.WriteBackProxy, error) {
-			originMetadata := metadata  // save origin metadata
-			metadata = metadata.Clone() // don't modify PacketAdapter's metadata
+			metadata := originMetadata.Clone()
 
 			if err := sender.DoSniff(metadata); err != nil {
 				log.Warnln("[UDP] DoSniff error: %s", err.Error())
@@ -499,8 +502,6 @@ func handleUDPConn(packet C.PacketAdapter) {
 
 			sender.AddMapping(originMetadata, dialMetadata)
 			oAddrPort := dialMetadata.AddrPort()
-			writeBackProxy := nat.NewWriteBackProxy(packet)
-
 			go handleUDPToLocal(writeBackProxy, pc, sender, key, oAddrPort)
 			return pc, writeBackProxy, nil
 		}

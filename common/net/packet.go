@@ -18,3 +18,7 @@ var NewDeadlineSingPacketConn = deadline.NewSingPacketConn
 var NewDeadlineEnhanceSingPacketConn = deadline.NewEnhanceSingPacketConn
 
 var CreatePacketBatchWriterWithCount = packet.CreatePacketBatchWriterWithCount
+
+type PacketBufferReader = packet.BufferReader
+
+var ReadPacketBuffer = packet.ReadPacketBuffer

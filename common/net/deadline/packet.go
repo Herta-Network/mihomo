@@ -3,7 +3,6 @@ package deadline
 import (
 	"net"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 
@@ -26,6 +25,7 @@ type NetPacketConn struct {
 	resultCh     chan any
 	done         chan struct{}
 	closeOnce    sync.Once
+	readMutex    sync.Mutex
 	publishMutex sync.Mutex
 	closeErr     error
 }
@@ -70,6 +70,12 @@ func NewNetPacketConn(pc net.PacketConn) net.PacketConn {
 }
 
 func (c *NetPacketConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+	c.readMutex.Lock()
+	defer c.readMutex.Unlock()
+	return c.readFrom(p)
+}
+
+func (c *NetPacketConn) readFrom(p []byte) (n int, addr net.Addr, err error) {
 	if c.isClosed() {
 		return 0, nil, net.ErrClosed
 	}
@@ -78,16 +84,13 @@ FOR:
 		select {
 		case result := <-c.resultCh:
 			if result != nil {
-				if result, ok := result.(*readResult); ok {
-					n = copy(p, result.data)
-					addr = result.addr
-					err = result.err
-					c.publishResult(nil) // finish cache read
-					return
+				data, put, resultAddr, resultErr := packetResultData(result)
+				n, addr, err = copy(p, data), resultAddr, resultErr
+				if put != nil {
+					put()
 				}
-				c.publishResult(result) // another type of read
-				runtime.Gosched()       // allowing other goroutines to run
-				continue FOR
+				c.publishResult(nil) // finish cache read
+				return
 			} else {
 				c.publishResult(nil)
 				break FOR
@@ -115,7 +118,7 @@ FOR:
 	}
 	go c.pipeReadFrom(len(p))
 
-	return c.ReadFrom(p)
+	return c.readFrom(p)
 }
 
 func (c *NetPacketConn) pipeReadFrom(size int) {
@@ -145,6 +148,10 @@ func (c *NetPacketConn) SetReadDeadline(t time.Time) error {
 }
 
 func (c *NetPacketConn) ReaderReplaceable() bool {
+	if !c.readMutex.TryLock() {
+		return false
+	}
+	defer c.readMutex.Unlock()
 	if c.isClosed() {
 		return false
 	}

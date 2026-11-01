@@ -1,7 +1,7 @@
 # sing fork integration
 
 `github.com/metacubex/sing` is replaced with the fixed Herta-Network revision
-`a402b0b490ba3514b46e242c0630420da7fec151` in `go.mod`. This also selects the fork
+`b5e7e17f97a04fa13eddb5a3a08335b3d786975d` in `go.mod`. This also selects the fork
 for MetaCubeX protocol dependencies that import that module path. The cronet-go, sing-snell, sing-vmess and sing-mux forks use this same module path. Their public
 package paths remain unchanged, but their sources are selected with fixed fork
 replacements. There is no separate `github.com/sagernet/sing` in the production
@@ -10,9 +10,9 @@ No local checkout or moving branch is needed to build mihomo.
 
 | Module identity | Fixed source commit |
 | --- | --- |
-| `github.com/metacubex/sing` | Herta-Network/sing `a402b0b490ba` |
+| `github.com/metacubex/sing` | Herta-Network/sing `b5e7e17f97a0` |
 | `github.com/sagernet/cronet-go` | Herta-Network/cronet-go `511fbbf40a07` |
-| `github.com/sagernet/sing-snell` | Herta-Network/sing-snell `42f9d87468f7` |
+| `github.com/sagernet/sing-snell` | Herta-Network/sing-snell `1fa24ee9ea84` |
 | `github.com/metacubex/sing-vmess` | Herta-Network/sing-vmess `12f108ffaf84` |
 | `github.com/metacubex/sing-mux` | Herta-Network/sing-mux `c0be7c45926a` |
 
@@ -42,6 +42,13 @@ pending-packet owners. The deadline wrapper also releases cached and late
 results after close. Listener teardown closes the transport before waiting for
 an in-flight reply writer.
 
+`CachedPacketConn` exposes an owned read waiter while retaining ownership of
+the handshake-prefetched packet. It serves that packet first, including empty
+datagrams, then hands through the underlying owned buffers. Scalar/cached/waiter
+reads share state, and teardown interrupts reads before releasing waiter storage.
+The shared counted vector writer retains its descriptors across writes; joined
+fallbacks use pooled bytes without a temporary `Buffer` object.
+
 ## Boundaries
 
 mihomo retains its routing, sniffing, destination mapping and NAT ownership.
@@ -58,6 +65,21 @@ Pending packets are flushed before resolving a new destination.
 The per-connection sender uses a bounded 128-slot deque ring and coalesces worker
 wakeups. FIFO order, full-queue drops and Close/Send ownership remain unchanged.
 Deadline refreshes reuse their timer; closing the owner prevents timer rearming.
+
+Downstream `ReadPacketBuffer` explicitly crosses the packet, deadline, reference,
+outbound and traffic wrappers. It preserves cached packets, counts plaintext
+download once, restores NAT source addresses as values and transfers buffers to
+`WriteBackBuffer`. Sing and legacy Snell reply endpoints retain usable headroom;
+legacy readers/writers keep their own API with controlled copy/release fallback.
+Deadline result types are interchangeable after timeout, and read admission is
+serialized across APIs to avoid stealing a cached result.
+
+The NAT reply proxy stores a durable reply endpoint and optional default-source
+value, independently of the packet adapter and metadata. Flow setup snapshots
+metadata before asynchronous dialing. Packet `Drop` releases only its payload;
+the reply handle remains valid and preserves a legacy nil-address fallback where
+provided. Context additions retain their override order without a per-packet
+list allocation. Packet/metadata envelopes are not globally pooled.
 
 `PacketBatchWriterWithCount.WritePacketBatchCount` reports the number of
 completely written packets at the start of the batch, including when a later
@@ -84,6 +106,11 @@ Scalar and batch writes share the connection's lock and terminal error state;
 closing interrupts blocked writes. Counts describe local write completion, not
 peer delivery. Payload validation leaves the nonce unchanged when no record was
 sent.
+
+The Snell fork reuses address and record-header workspaces, packet encoders,
+counted sinks and scalar-call descriptor arrays. Packet encryption reuses the
+consumed descriptor slice, and padding scratch uses pooled bytes. These changes
+preserve the original nonce, record-window, shaping and partial-write rules.
 
 ## Protocol capability coverage
 
@@ -130,12 +157,16 @@ when a lower write fails or returns a short success.
 
 The [Snell performance report](benchmarks/snell-2026-11-01.md) compares the
 committed Snell implementation with its parent using actual local packet traffic.
-It reports both throughput gains and increased allocation traffic; it does not
-claim a general memory reduction or measure all of the adapters above.
+It records throughput and allocation observations; its v6 timings used varying
+test PSKs and are not controlled speedup evidence. It does not claim a general
+memory reduction or measure all of the adapters above.
 The subsequent [UDP allocation report](benchmarks/udp-allocation-2026-11-01.md)
 measures owned-buffer transfer, in-place Snell v3 records and reused counted
 vector storage. It distinguishes zero-allocation steady stages from the full
 loopback path, which still allocates.
+The [owned downstream report](benchmarks/owned-downlink-2026-11-01.md) measures
+the shared fork changes, cached-reader ownership and independent reply handles,
+including real request/reply loopbacks and an isolated downstream-loop benchmark.
 
 Datagram receive capacity is independent of low-memory stream buffers. Generic
 packet connections allow a full UDP datagram, and legacy Snell reads reserve

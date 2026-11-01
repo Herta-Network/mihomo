@@ -18,6 +18,10 @@ import (
 	SN "github.com/metacubex/sing/common/network"
 )
 
+// Snell v6 derives its shaping profile from the PSK. Keep the workload
+// identical across independent before/after benchmark processes.
+const snellBenchmarkPSK = "mihomo-fixed-benchmark-psk-2026-11-01"
+
 // BenchmarkSnellPacketWrite compares the same production adapter/traffic
 // wrappers on revisions with and without counted batch capability. Each op is
 // four datagrams, matching packetSender's queue-drain limit. The receiving
@@ -26,7 +30,7 @@ func BenchmarkSnellPacketWrite(b *testing.B) {
 	for _, version := range []int{3, 4, 6} {
 		for _, size := range []int{64, 1200} {
 			b.Run(fmt.Sprintf("v%d/%d", version, size), func(b *testing.B) {
-				in, err := inbound.NewSnell(&inbound.SnellOption{BaseOption: inbound.BaseOption{NameStr: "snell-benchmark", Listen: "127.0.0.1", Port: "0"}, Psk: userUUID, Version: version, UDP: true})
+				in, err := inbound.NewSnell(&inbound.SnellOption{BaseOption: inbound.BaseOption{NameStr: "snell-benchmark", Listen: "127.0.0.1", Port: "0"}, Psk: snellBenchmarkPSK, Version: version, UDP: true})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -42,7 +46,7 @@ func BenchmarkSnellPacketWrite(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				out, err := outbound.NewSnell(outbound.SnellOption{BasicOption: outbound.BasicOption{DialerForAPI: tunnel.NewDialer()}, Name: "snell-benchmark", Server: addr.Addr().String(), Port: int(addr.Port()), Psk: userUUID, Version: version, UDP: true})
+				out, err := outbound.NewSnell(outbound.SnellOption{BasicOption: outbound.BasicOption{DialerForAPI: tunnel.NewDialer()}, Name: "snell-benchmark", Server: addr.Addr().String(), Port: int(addr.Port()), Psk: snellBenchmarkPSK, Version: version, UDP: true})
 				if err != nil {
 					b.Fatal(err)
 				}

@@ -3,7 +3,6 @@ package deadline
 import (
 	"net"
 	"os"
-	"runtime"
 
 	"github.com/metacubex/mihomo/common/net/packet"
 )
@@ -32,6 +31,12 @@ type enhancePacketConn struct {
 }
 
 func (c *enhancePacketConn) WaitReadFrom() (data []byte, put func(), addr net.Addr, err error) {
+	c.netPacketConn.readMutex.Lock()
+	defer c.netPacketConn.readMutex.Unlock()
+	return c.waitReadFrom()
+}
+
+func (c *enhancePacketConn) waitReadFrom() (data []byte, put func(), addr net.Addr, err error) {
 	if c.netPacketConn.isClosed() {
 		return nil, nil, nil, net.ErrClosed
 	}
@@ -40,17 +45,9 @@ FOR:
 		select {
 		case result := <-c.netPacketConn.resultCh:
 			if result != nil {
-				if result, ok := result.(*enhanceReadResult); ok {
-					data = result.data
-					put = result.put
-					addr = result.addr
-					err = result.err
-					c.netPacketConn.publishResult(nil) // finish cache read
-					return
-				}
-				c.netPacketConn.publishResult(result) // another type of read
-				runtime.Gosched()                     // allowing other goroutines to run
-				continue FOR
+				data, put, addr, err = packetResultData(result)
+				c.netPacketConn.publishResult(nil) // finish cache read
+				return
 			} else {
 				c.netPacketConn.publishResult(nil)
 				break FOR
@@ -78,7 +75,7 @@ FOR:
 	}
 	go c.pipeWaitReadFrom()
 
-	return c.WaitReadFrom()
+	return c.waitReadFrom()
 }
 
 func (c *enhancePacketConn) pipeWaitReadFrom() {

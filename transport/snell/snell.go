@@ -53,8 +53,9 @@ type packetFrameWriter interface {
 
 type Snell struct {
 	net.Conn
-	buffer [1]byte
-	reply  bool
+	responseBuffers [1]*buf.Buffer
+	buffer          [1]byte
+	reply           bool
 }
 
 func (s *Snell) Read(b []byte) (int, error) {

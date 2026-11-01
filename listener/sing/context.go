@@ -2,17 +2,19 @@ package sing
 
 import (
 	"context"
-	"golang.org/x/exp/slices"
 	"net"
 
 	"github.com/metacubex/mihomo/adapter/inbound"
+	C "github.com/metacubex/mihomo/constant"
 
 	"github.com/metacubex/sing/common/auth"
+	"golang.org/x/exp/slices"
 )
 
 type contextKey string
 
-var ctxKeyAdditions = contextKey("Additions")
+// Keep boxed keys once rather than boxing a string for each Context.Value call.
+var ctxKeyAdditions any = contextKey("Additions")
 
 func WithAdditions(ctx context.Context, additions ...inbound.Addition) context.Context {
 	return context.WithValue(ctx, ctxKeyAdditions, additions)
@@ -33,7 +35,16 @@ func getAdditions(ctx context.Context) (additions []inbound.Addition) {
 	return
 }
 
-var ctxKeyInAddr = contextKey("InAddr")
+func applyContextAdditions(ctx context.Context, metadata *C.Metadata) {
+	if additions, ok := ctx.Value(ctxKeyAdditions).([]inbound.Addition); ok {
+		inbound.ApplyAdditions(metadata, additions...)
+	}
+	if user, ok := auth.UserFromContext[string](ctx); ok {
+		metadata.InUser = user
+	}
+}
+
+var ctxKeyInAddr any = contextKey("InAddr")
 
 func WithInAddr(ctx context.Context, inAddr net.Addr) context.Context {
 	return context.WithValue(ctx, ctxKeyInAddr, inAddr)

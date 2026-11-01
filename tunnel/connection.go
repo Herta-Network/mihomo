@@ -338,32 +338,18 @@ func handleUDPToLocal(writeBack C.WriteBack, pc C.PacketConn, sender C.PacketSen
 
 	for {
 		_ = pc.SetReadDeadline(time.Now().Add(udpTimeout))
-		data, put, from, err := pc.WaitReadFrom()
+		buffer, from, err := N.ReadPacketBuffer(pc)
 		if err != nil {
 			return
 		}
-
-		fromUDPAddr, isUDPAddr := from.(*net.UDPAddr)
-		if !isUDPAddr {
-			fromUDPAddr = net.UDPAddrFromAddrPort(oAddrPort) // oAddrPort was Unmapped
-			log.Warnln("server return a [%T](%s) which isn't a *net.UDPAddr, force replace to (%s), this may be caused by a wrongly implemented server", from, from, oAddrPort)
-		} else if fromUDPAddr == nil {
-			fromUDPAddr = net.UDPAddrFromAddrPort(oAddrPort) // oAddrPort was Unmapped
-			log.Warnln("server return a nil *net.UDPAddr, force replace to (%s), this may be caused by a wrongly implemented server", oAddrPort)
+		if !from.IsIP() {
+			log.Warnln("server returned an invalid UDP source (%s), force replace to (%s)", from, oAddrPort)
+			from = M.SocksaddrFromNetIP(oAddrPort)
 		}
-
-		fromAddrPort := fromUDPAddr.AddrPort()
-		fromAddr := fromAddrPort.Addr().Unmap()
-
 		// restore DestinationNAT
-		fromAddr = sender.RestoreReadFrom(fromAddr).Unmap()
-
-		fromAddrPort = netip.AddrPortFrom(fromAddr, fromAddrPort.Port())
-
-		_, err = writeBack.WriteBack(data, net.UDPAddrFromAddrPort(fromAddrPort))
-		if put != nil {
-			put()
-		}
+		from.Addr = sender.RestoreReadFrom(from.Addr.Unmap()).Unmap()
+		from.Fqdn = ""
+		err = C.WriteBackBuffer(writeBack, buffer, from)
 		if err != nil {
 			return
 		}

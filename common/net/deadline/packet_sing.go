@@ -3,7 +3,6 @@ package deadline
 import (
 	"net"
 	"os"
-	"runtime"
 
 	"github.com/metacubex/mihomo/common/net/packet"
 
@@ -47,6 +46,12 @@ type singPacketConn struct {
 }
 
 func (c *singPacketConn) ReadPacket(buffer *buf.Buffer) (destination M.Socksaddr, err error) {
+	c.netPacketConn.readMutex.Lock()
+	defer c.netPacketConn.readMutex.Unlock()
+	return c.readPacket(buffer)
+}
+
+func (c *singPacketConn) readPacket(buffer *buf.Buffer) (destination M.Socksaddr, err error) {
 	if c.netPacketConn.isClosed() {
 		return M.Socksaddr{}, net.ErrClosed
 	}
@@ -55,22 +60,17 @@ FOR:
 		select {
 		case result := <-c.netPacketConn.resultCh:
 			if result != nil {
-				if result, ok := result.(*singReadResult); ok {
-					destination = result.destination
-					err = result.err
-					if result.buffer != nil {
-						_, writeErr := buffer.Write(result.buffer.Bytes())
-						result.buffer.Release()
-						if err == nil {
-							err = writeErr
-						}
+				var owned *buf.Buffer
+				owned, destination, err = packetResultBuffer(result)
+				if owned != nil {
+					_, writeErr := buffer.Write(owned.Bytes())
+					owned.Release()
+					if err == nil {
+						err = writeErr
 					}
-					c.netPacketConn.publishResult(nil) // finish cache read
-					return
 				}
-				c.netPacketConn.publishResult(result) // another type of read
-				runtime.Gosched()                     // allowing other goroutines to run
-				continue FOR
+				c.netPacketConn.publishResult(nil) // finish cache read
+				return
 			} else {
 				c.netPacketConn.publishResult(nil)
 				break FOR
@@ -98,7 +98,7 @@ FOR:
 	}
 	go c.pipeReadPacket(buffer.FreeLen())
 
-	return c.ReadPacket(buffer)
+	return c.readPacket(buffer)
 }
 
 func (c *singPacketConn) pipeReadPacket(pLen int) {
@@ -130,15 +130,23 @@ var _ N.PacketReadWaiter = (*singPacketReadWaiter)(nil)
 type singPacketReadWaiter struct {
 	netPacketConn    *NetPacketConn
 	packetReadWaiter N.PacketReadWaiter
+	options          N.ReadWaitOptions
 }
 
 type singWaitReadResult singReadResult
 
 func (c *singPacketReadWaiter) InitializeReadWaiter(options N.ReadWaitOptions) (needCopy bool) {
+	c.options = options
 	return c.packetReadWaiter.InitializeReadWaiter(options)
 }
 
 func (c *singPacketReadWaiter) WaitReadPacket() (buffer *buf.Buffer, destination M.Socksaddr, err error) {
+	c.netPacketConn.readMutex.Lock()
+	defer c.netPacketConn.readMutex.Unlock()
+	return c.waitReadPacket()
+}
+
+func (c *singPacketReadWaiter) waitReadPacket() (buffer *buf.Buffer, destination M.Socksaddr, err error) {
 	if c.netPacketConn.isClosed() {
 		return nil, M.Socksaddr{}, net.ErrClosed
 	}
@@ -147,16 +155,12 @@ FOR:
 		select {
 		case result := <-c.netPacketConn.resultCh:
 			if result != nil {
-				if result, ok := result.(*singWaitReadResult); ok {
-					buffer = result.buffer
-					destination = result.destination
-					err = result.err
-					c.netPacketConn.publishResult(nil) // finish cache read
-					return
+				buffer, destination, err = packetResultBuffer(result)
+				if buffer != nil {
+					buffer = c.options.Copy(buffer)
 				}
-				c.netPacketConn.publishResult(result) // another type of read
-				runtime.Gosched()                     // allowing other goroutines to run
-				continue FOR
+				c.netPacketConn.publishResult(nil) // finish cache read
+				return
 			} else {
 				c.netPacketConn.publishResult(nil)
 				break FOR
@@ -183,7 +187,7 @@ FOR:
 	}
 	go c.pipeWaitReadPacket()
 
-	return c.WaitReadPacket()
+	return c.waitReadPacket()
 }
 
 func (c *singPacketReadWaiter) pipeWaitReadPacket() {

@@ -7,6 +7,12 @@ before/after order, with no concurrent builds or tests. Each sample ran for one
 second in an independent process. Values below are medians; raw samples and
 the sample counts are in [udp-allocation-2026-11-01.json](udp-allocation-2026-11-01.json).
 
+The protocol samples in this historical report used the original per-process
+random test PSK. Snell v6 derives its shaping profile from that key, so those
+v6 timings do not compare an identical workload. The later
+[owned downstream report](owned-downlink-2026-11-01.md) fixes the benchmark PSK
+in both revisions. Do not directly compare timing across the two fixtures.
+
 ## Changes measured
 
 - Sing and legacy Snell UDP inbounds can transfer their owned `buf.Buffer`

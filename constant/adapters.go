@@ -13,6 +13,7 @@ import (
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/sing/common/buf"
+	M "github.com/metacubex/sing/common/metadata"
 )
 
 // Adapter Type
@@ -326,6 +327,17 @@ func (s *packetAdapter) TakeBuffer() *buf.Buffer {
 	return nil
 }
 
+func (s *packetAdapter) WriteBackTarget() WriteBack {
+	return GetWriteBackTarget(s.UDPPacket)
+}
+
+func (s *packetAdapter) DefaultWriteBackAddress() netip.AddrPort {
+	if source, ok := s.UDPPacket.(WriteBackDefaultAddress); ok {
+		return source.DefaultWriteBackAddress()
+	}
+	return netip.AddrPort{}
+}
+
 func NewPacketAdapter(packet UDPPacket, metadata *Metadata) PacketAdapter {
 	return &packetAdapter{
 		packet,
@@ -336,6 +348,32 @@ func NewPacketAdapter(packet UDPPacket, metadata *Metadata) PacketAdapter {
 
 type WriteBack interface {
 	WriteBack(b []byte, addr net.Addr) (n int, err error)
+}
+
+// WriteBackTarget separates a persistent reply endpoint from a packet and its
+// metadata. The endpoint is valid after Drop and accepts explicit source
+// addresses; the original packet retains its own nil-address fallback.
+type WriteBackTarget interface {
+	WriteBackTarget() WriteBack
+}
+
+// WriteBackDefaultAddress snapshots a packet's optional nil-address fallback
+// without keeping its payload/metadata envelope alive.
+type WriteBackDefaultAddress interface {
+	DefaultWriteBackAddress() netip.AddrPort
+}
+
+func GetWriteBackTarget(wb WriteBack) WriteBack {
+	if source, ok := wb.(WriteBackTarget); ok {
+		return source.WriteBackTarget()
+	}
+	return wb
+}
+
+// BufferWriteBack consumes the buffer on success and failure. It must preserve
+// the reply endpoint's serialization and any protocol/traffic wrappers.
+type BufferWriteBack interface {
+	WriteBackBuffer(buffer *buf.Buffer, destination M.Socksaddr) error
 }
 
 type WriteBackProxy interface {

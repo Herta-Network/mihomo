@@ -145,7 +145,7 @@ func (h *ListenerHandler) NewConnection(ctx context.Context, conn net.Conn, meta
 	}
 	inbound.ApplyAdditions(cMetadata, inbound.WithDstAddr(metadata.Destination), inbound.WithSrcAddr(metadata.Source), inbound.WithInAddr(conn.LocalAddr()))
 	inbound.ApplyAdditions(cMetadata, h.Additions...)
-	inbound.ApplyAdditions(cMetadata, getAdditions(ctx)...)
+	applyContextAdditions(ctx, cMetadata)
 
 	h.Tunnel.HandleTCPConn(conn, cMetadata) // this goroutine must exit after conn unused
 	return nil
@@ -157,16 +157,17 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 	}
 
 	connID := utils.NewUUIDV4().String() // make a new SNAT key
-
-	mutex := sync.Mutex{}
-	writer := bufio.NewNetPacketWriter(conn) // a new interface to set nil in defer
+	reply := &packetReply{writer: bufio.NewNetPacketWriter(conn), packetWriter: conn}
+	rAddr := N.NewCustomAddr(h.Type.String(), connID, metadata.Source.UDPAddr())
+	lAddr := conn.LocalAddr()
+	if address := getInAddr(ctx); address != nil {
+		lAddr = address
+	}
 	reader := P.NewReader(conn, network.ReadWaitOptions{})
 	defer func() {
 		_ = conn.Close() // interrupt an in-flight WriteBack before waiting for it
 		reader.Close()
-		mutex.Lock() // this goroutine must exit after all conn.WritePacket() is not running
-		defer mutex.Unlock()
-		writer = nil
+		reply.close()
 	}()
 	for {
 		buff, dest, err := reader.ReadPacket()
@@ -177,15 +178,10 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 			return err
 		}
 		cPacket := &packet{
-			writer: &writer,
-			mutex:  &mutex,
-			rAddr:  metadata.Source.UDPAddr(),
-			lAddr:  conn.LocalAddr(),
-			buff:   buff,
-		}
-		cPacket.rAddr = N.NewCustomAddr(h.Type.String(), connID, cPacket.rAddr) // for tunnel's handleUDPConn
-		if lAddr := getInAddr(ctx); lAddr != nil {
-			cPacket.lAddr = lAddr
+			reply: reply,
+			rAddr: rAddr,
+			lAddr: lAddr,
+			buff:  buff,
 		}
 		h.handlePacket(ctx, cPacket, metadata.Source, dest)
 	}
@@ -197,13 +193,12 @@ type localAddr interface {
 }
 
 func (h *ListenerHandler) NewPacket(ctx context.Context, key netip.AddrPort, buffer *buf.Buffer, metadata M.Metadata, init func(natConn network.PacketConn) network.PacketWriter) {
-	writer := bufio.NewNetPacketWriter(init(nil))
-	mutex := sync.Mutex{}
+	packetWriter := init(nil)
+	writer := bufio.NewNetPacketWriter(packetWriter)
 	cPacket := &packet{
-		writer: &writer,
-		mutex:  &mutex,
-		rAddr:  metadata.Source.UDPAddr(),
-		buff:   buffer,
+		reply: &packetReply{writer: writer, packetWriter: packetWriter},
+		rAddr: metadata.Source.UDPAddr(),
+		buff:  buffer,
 	}
 	if h.Type != C.TUN { // make the handler-related SNAT key for not TUN listener
 		connID := fmt.Sprintf("%s:%s", h.handlerId, key)
@@ -228,7 +223,7 @@ func (h *ListenerHandler) handlePacket(ctx context.Context, cPacket *packet, sou
 	}
 	inbound.ApplyAdditions(cMetadata, inbound.WithDstAddr(destination), inbound.WithSrcAddr(source), inbound.WithInAddr(cPacket.InAddr()))
 	inbound.ApplyAdditions(cMetadata, h.Additions...)
-	inbound.ApplyAdditions(cMetadata, getAdditions(ctx)...)
+	applyContextAdditions(ctx, cMetadata)
 
 	h.Tunnel.HandleUDPPacket(cPacket, cMetadata)
 }
@@ -252,11 +247,10 @@ func ShouldIgnorePacketError(err error) bool {
 }
 
 type packet struct {
-	writer *network.NetPacketWriter
-	mutex  *sync.Mutex
-	rAddr  net.Addr
-	lAddr  net.Addr
-	buff   *buf.Buffer
+	reply *packetReply
+	rAddr net.Addr
+	lAddr net.Addr
+	buff  *buf.Buffer
 }
 
 func (c *packet) Data() []byte {
@@ -274,6 +268,26 @@ func (c *packet) TakeBuffer() *buf.Buffer {
 
 // WriteBack wirtes UDP packet with source(ip, port) = `addr`
 func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
+	return c.reply.WriteBack(b, addr)
+}
+
+func (c *packet) WriteBackTarget() C.WriteBack { return c.reply }
+
+// packetReply outlives any one payload/metadata pair. NAT stores this handle,
+// while each packet owns only its payload and per-packet routing metadata.
+type packetReply struct {
+	mutex        sync.Mutex
+	writer       network.NetPacketWriter
+	packetWriter network.PacketWriter
+}
+
+func (c *packetReply) close() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.writer, c.packetWriter = nil, nil
+}
+
+func (c *packetReply) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 	if addr == nil {
 		err = errors.New("address is invalid")
 		return
@@ -281,13 +295,24 @@ func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	conn := *c.writer
+	conn := c.writer
 	if conn == nil {
 		err = errors.New("writeBack to closed connection")
 		return
 	}
 
 	return conn.WriteTo(b, addr)
+}
+
+func (c *packetReply) WriteBackBuffer(buffer *buf.Buffer, destination M.Socksaddr) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if c.packetWriter == nil {
+		buffer.Release()
+		return net.ErrClosed
+	}
+	buffer = network.NewReadWaitOptions(nil, c.packetWriter).Copy(buffer)
+	return c.packetWriter.WritePacket(buffer, destination)
 }
 
 // LocalAddr returns the source IP/Port of UDP Packet

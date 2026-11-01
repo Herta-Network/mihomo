@@ -298,7 +298,7 @@ func (l *Listener) handleUDP(stream *snell.Snell, clientID string, tunnel C.Tunn
 
 	connID := utils.NewUUIDV4().String()
 	localAddr := N.NewCustomAddr(C.SNELL.String(), connID, stream.RemoteAddr())
-	writeMu := &sync.Mutex{}
+	reply := &udpReply{conn: stream}
 	for {
 		buffer, err := stream.ReadPacketBuffer()
 		if err != nil {
@@ -321,8 +321,7 @@ func (l *Listener) handleUDP(stream *snell.Snell, clientID string, tunnel C.Tunn
 		buffer.Advance(buffer.Len() - len(request.Payload))
 		packet := &udpPacket{
 			buffer:    buffer,
-			conn:      stream,
-			writeMu:   writeMu,
+			reply:     reply,
 			localAddr: localAddr,
 			dstAddr:   metadata.AddrPort(),
 		}
@@ -423,8 +422,7 @@ func (c *tcpRequestConn) Close() error {
 
 type udpPacket struct {
 	buffer    *buf.Buffer
-	conn      *snell.Snell
-	writeMu   *sync.Mutex
+	reply     *udpReply
 	localAddr net.Addr
 	dstAddr   netip.AddrPort
 }
@@ -446,9 +444,28 @@ func (p *udpPacket) WriteBack(b []byte, addr net.Addr) (int, error) {
 	if addr == nil && p.dstAddr.IsValid() {
 		addr = net.UDPAddrFromAddrPort(p.dstAddr)
 	}
-	p.writeMu.Lock()
-	defer p.writeMu.Unlock()
-	return snell.WritePacketResponse(p.conn, addr, b)
+	return p.reply.WriteBack(b, addr)
+}
+
+func (p *udpPacket) WriteBackTarget() C.WriteBack { return p.reply }
+
+func (p *udpPacket) DefaultWriteBackAddress() netip.AddrPort { return p.dstAddr }
+
+type udpReply struct {
+	conn    *snell.Snell
+	writeMu sync.Mutex
+}
+
+func (r *udpReply) WriteBack(b []byte, addr net.Addr) (int, error) {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
+	return snell.WritePacketResponse(r.conn, addr, b)
+}
+
+func (r *udpReply) WriteBackBuffer(buffer *buf.Buffer, destination M.Socksaddr) error {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
+	return r.conn.WritePacketResponseBuffer(buffer, destination)
 }
 
 func (p *udpPacket) Drop() {
