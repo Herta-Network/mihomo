@@ -2,8 +2,12 @@ github.com/Herta-Network/cronet-go v0.0.0-20261101093049-511fbbf40a07 h1:jJLXzHV
 github.com/Herta-Network/cronet-go v0.0.0-20261101093049-511fbbf40a07/go.mod h1:5IlmSxRg7AIDwWN9exujrbWAwFiU3fHHqoSyEdNe8sM=
 github.com/Herta-Network/sing v0.0.0-20261101103341-a402b0b490ba h1:vAXE63qsaFJD4GAfa3l+6ChMuPHiqHp19ScWTYgozqM=
 github.com/Herta-Network/sing v0.0.0-20261101103341-a402b0b490ba/go.mod h1:ynXUNwUt4dfOFO805EWzw3ORmNWXoexziwn5XYCfsq8=
+github.com/Herta-Network/sing-mux v0.0.0-20261101114134-c0be7c45926a h1:xcJ2VOEghhP3ZqTBiERX6FGd/C1DUxUT22EK4djxVy8=
+github.com/Herta-Network/sing-mux v0.0.0-20261101114134-c0be7c45926a/go.mod h1:6tQ9Nu3B+swq/DxpwIcn5LXDobTv9+WpObtV7BEZxA0=
 github.com/Herta-Network/sing-snell v0.0.0-20261101103437-42f9d87468f7 h1:VyQnqDK7MYtlf8B/c6Xx6qK4TwDRaN4Ebjr0vulVOnw=
 github.com/Herta-Network/sing-snell v0.0.0-20261101103437-42f9d87468f7/go.mod h1:fUYBs4Y2kAi8xRTpOlfXQMh+CCwVQZQmx42Jm3B2RtI=
+github.com/Herta-Network/sing-vmess v0.0.0-20261101114133-12f108ffaf84 h1:Lo8RKfp1sdS8qXfH591HhJ0NTSIGwRuU1cXiHjPJaBk=
+github.com/Herta-Network/sing-vmess v0.0.0-20261101114133-12f108ffaf84/go.mod h1:bncT/hKo7XThCTHRP85/rvIVgbaEOWu87hZ043QSUvw=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=
 github.com/RyuaNerin/go-krypto v1.3.0/go.mod h1:9R9TU936laAIqAmjcHo/LsaXYOZlymudOAxjaBf62UM=
 github.com/RyuaNerin/testingutil v0.1.0 h1:IYT6JL57RV3U2ml3dLHZsVtPOP6yNK7WUVdzzlpNrss=
@@ -169,8 +173,6 @@ github.com/metacubex/restls-client-go v0.1.9 h1:QmLKwVFuAjB6rL9lQNKj8CuwHqGMJjV3
 github.com/metacubex/restls-client-go v0.1.9/go.mod h1:BN/U52vPw7j8VTSh2vleD/MnmVKCov84mS5VcjVHH4g=
 github.com/metacubex/sevenzip v1.6.4 h1:OIL+DeOeSAbKNsjqxcYUMiarRmX6Kaxakb0GT7E9Oik=
 github.com/metacubex/sevenzip v1.6.4/go.mod h1:FP3X9bzFKj9wPxifGN9B3w2fIEicMjzKYIGIhnu+1pw=
-github.com/metacubex/sing-mux v0.3.12 h1:80jrJsGgRW7ZHpJCRpwJhG3yzT5muEHIWjaOsDJZ2wE=
-github.com/metacubex/sing-mux v0.3.12/go.mod h1:8bT7ZKT3clRrJjYc/x5CRYibC1TX/bK73a3r3+2E+Fc=
 github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a h1:qZzQwtWDrPU1LXoMow0/iLHY3mb7uauS/mho8hYcenE=
 github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a/go.mod h1:6ayFGfzzBE85csgQkM3gf4neFq6s0losHlPRSxY+nuk=
 github.com/metacubex/sing-shadowsocks v0.2.13 h1:PKmInHy9+4nY3FLhmKcWdASUBo9WZ/KrSPWjNpGaUTQ=
@@ -179,8 +181,6 @@ github.com/metacubex/sing-shadowsocks2 v0.2.8 h1:6MoODu7BAcnwIC0w9muq+2LZVz01wWD
 github.com/metacubex/sing-shadowsocks2 v0.2.8/go.mod h1:vOEbfKC60txi0ca+yUlqEwOGc3Obl6cnSgx9Gf45KjE=
 github.com/metacubex/sing-tun v0.4.28 h1:IWcH13jEbsxzM5SZrRat3IeJG31WiF9fOj3r18yGHw4=
 github.com/metacubex/sing-tun v0.4.28/go.mod h1:t2cK1AjogLda3/XxesmG0l7r1HzagLaUPBdNovhsb4Q=
-github.com/metacubex/sing-vmess v0.2.5 h1:m9Zt5I27lB9fmLMZfism9sH2LcnAfShZfwSkf6/KJoE=
-github.com/metacubex/sing-vmess v0.2.5/go.mod h1:AwtlzUgf8COe9tRYAKqWZ+leDH7p5U98a0ZUpYehl8Q=
 github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406 h1:sronRtbNXPCT9sOpcsISq87w4mLufxP7mQFUEg+zUCY=
 github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406/go.mod h1:OiYj4hitKrN1YIrgGHXp6zKnc9asCspF+SrYlLN2hYQ=
 github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141 h1:DK2l6m2Fc85H2BhiAPgbJygiWhesPlfGmF+9Vw6ARdk=

@@ -76,11 +76,21 @@ func (hc *httpConn) Write(b []byte) (int, error) {
 		}
 	}
 	req.ContentLength = int64(len(b))
-	if err := req.Write(hc.Conn); err != nil {
+	var wire bytes.Buffer
+	if err := req.Write(&wire); err != nil {
 		return 0, err
 	}
+	n, err := hc.Conn.Write(wire.Bytes())
+	if n < 0 || n > wire.Len() {
+		n, err = 0, io.ErrShortWrite
+	} else if n != wire.Len() && err == nil {
+		err = io.ErrShortWrite
+	}
 	hc.whandshake = true
-	return len(b), nil
+	if err != nil {
+		_ = hc.Conn.Close()
+	}
+	return max(0, min(len(b), n-(wire.Len()-len(b)))), err
 }
 
 func (hc *httpConn) Close() error {

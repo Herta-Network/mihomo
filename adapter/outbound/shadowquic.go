@@ -13,8 +13,8 @@ import (
 	"github.com/metacubex/mihomo/transport/shadowquic"
 	"github.com/metacubex/mihomo/transport/tuic"
 
-	"github.com/metacubex/jls-quic-go"
-	"github.com/metacubex/jls-tls"
+	quic "github.com/metacubex/jls-quic-go"
+	tls "github.com/metacubex/jls-tls"
 )
 
 type ShadowQuic struct {
@@ -67,7 +67,7 @@ func (s *ShadowQuic) ListenPacketContext(ctx context.Context, metadata *C.Metada
 	if err != nil {
 		return nil, err
 	}
-	return NewPacketConn(pc, s), nil
+	return NewPacketConn(withPacketProgress(pc, s.option.UDPOverStream), s), nil
 }
 
 func (s *ShadowQuic) Close() error {

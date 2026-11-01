@@ -45,29 +45,25 @@ func (vc *Conn) ReadBuffer(buffer *buf.Buffer) error {
 
 func (vc *Conn) Write(p []byte) (int, error) {
 	if !vc.sent {
-		if err := vc.sendRequest(p); err != nil {
-			return 0, err
-		}
+		n, err := vc.sendRequest(p)
 		vc.sent = true
-		return len(p), nil
+		if err != nil {
+			_ = vc.ExtendedConn.Close()
+		}
+		return n, err
 	}
-
 	return vc.ExtendedConn.Write(p)
 }
-
 func (vc *Conn) WriteBuffer(buffer *buf.Buffer) error {
 	if !vc.sent {
-		if err := vc.sendRequest(buffer.Bytes()); err != nil {
-			return err
-		}
-		vc.sent = true
-		return nil
+		defer buffer.Release()
+		_, err := vc.Write(buffer.Bytes())
+		return err
 	}
-
 	return vc.ExtendedConn.WriteBuffer(buffer)
 }
 
-func (vc *Conn) sendRequest(p []byte) (err error) {
+func (vc *Conn) sendRequest(p []byte) (written int, err error) {
 	var addonsBytes []byte
 	if vc.addons != nil {
 		addonsBytes, err = proto.Marshal(vc.addons)
@@ -118,8 +114,13 @@ func (vc *Conn) sendRequest(p []byte) (err error) {
 
 	buf.Must(buf.Error(buffer.Write(p)))
 
-	_, err = vc.ExtendedConn.Write(buffer.Bytes())
-	return
+	n, writeErr := vc.ExtendedConn.Write(buffer.Bytes())
+	if n < 0 || n > buffer.Len() {
+		n, writeErr = 0, io.ErrShortWrite
+	} else if n != buffer.Len() && writeErr == nil {
+		writeErr = io.ErrShortWrite
+	}
+	return max(0, min(len(p), n-(requestLen-len(p)))), writeErr
 }
 
 func (vc *Conn) recvResponse() (err error) {

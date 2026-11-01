@@ -6,6 +6,8 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/metacubex/mihomo/common/net/packetbatch"
+
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/structure"
 	C "github.com/metacubex/mihomo/constant"
@@ -275,7 +277,9 @@ func (ss *ShadowSocks) ListenPacketContext(ctx context.Context, metadata *C.Meta
 	if err != nil {
 		return nil, err
 	}
-	pc = ss.method.DialPacketConn(bufio.NewBindPacketConn(pc, addr))
+	pc = packetbatch.NewDatagramEncoder(pc, func(raw net.PacketConn) net.PacketConn {
+		return ss.method.DialPacketConn(bufio.NewBindPacketConn(raw, addr))
+	})
 	return NewPacketConn(pc, ss), nil
 }
 

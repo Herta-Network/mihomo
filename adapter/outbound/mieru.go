@@ -3,10 +3,15 @@ package outbound
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/netip"
 	"strconv"
 	"sync"
+
+	"github.com/metacubex/mihomo/common/net/packetbatch"
+	"github.com/metacubex/sing/common/buf"
+	M "github.com/metacubex/sing/common/metadata"
 
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/component/resolver"
@@ -96,7 +101,14 @@ func (m *Mieru) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (
 	if err != nil {
 		return nil, fmt.Errorf("dial to %s failed: %w", metadata.UDPAddr(), err)
 	}
-	return NewPacketConn(N.NewThreadSafePacketConn(mierucommon.NewUDPAssociateWrapper(mierucommon.NewPacketOverStreamTunnel(c))), m), nil
+	destination := M.SocksaddrFromNet(metadata.UDPAddr())
+	pc := packetbatch.NewPacketStreamEncoder(c, newMieruPacketConn, packetbatch.StreamEncoderOptions{Destination: destination, Validate: func(buffer *buf.Buffer, target M.Socksaddr) error {
+		if buffer.Len() > 65535-3-M.SocksaddrSerializer.AddrPortLen(target) {
+			return io.ErrShortBuffer
+		}
+		return nil
+	}})
+	return NewPacketConn(N.NewThreadSafePacketConn(pc), m), nil
 }
 
 // SupportUOT implements C.ProxyAdapter

@@ -28,6 +28,8 @@ func TestSingPacketIntegration(t *testing.T) {
 		name, cipher, password string
 		uot                    int
 	}{
+		{"none-udp", "none", "", 0},
+		{"stream-udp", "chacha20-ietf", shadowsocksPassword32, 0},
 		{"aead-udp", "aes-128-gcm", shadowsocksPassword16, 0},
 		{"2022-udp", "2022-blake3-aes-128-gcm", shadowsocksPassword16, 0},
 		{"uot-v1", "aes-128-gcm", shadowsocksPassword16, 1},
@@ -75,9 +77,7 @@ func TestSingPacketIntegration(t *testing.T) {
 			var total int64
 			targets := make([]*net.UDPAddr, len(payloads))
 			batchWriter, canBatch := N.CreatePacketBatchWriterWithCount(tracker)
-			if test.uot != 0 {
-				require.True(t, canBatch, "UoT batch capability lost in wrapper chain")
-			}
+			require.True(t, canBatch, "packet batch capability lost in wrapper chain")
 			buffers := make([]*buf.Buffer, 0, len(payloads))
 			destinations := make([]M.Socksaddr, 0, len(payloads))
 			for i, payload := range payloads {

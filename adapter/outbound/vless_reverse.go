@@ -67,7 +67,7 @@ func (v *VlessReverse) ListenPacketContext(ctx context.Context, metadata *C.Meta
 	if err != nil {
 		return nil, err
 	}
-	return NewPacketConn(conn, v), nil
+	return NewPacketConn(withPacketProgress(conn, true), v), nil
 }
 func (v *VlessReverse) SupportUOT() bool { return true }
 func (v *VlessReverse) Close() error {

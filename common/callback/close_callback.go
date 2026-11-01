@@ -3,7 +3,9 @@ package callback
 import (
 	"sync"
 
+	N "github.com/metacubex/mihomo/common/net"
 	C "github.com/metacubex/mihomo/constant"
+	SN "github.com/metacubex/sing/common/network"
 )
 
 type closeCallbackConn struct {
@@ -58,4 +60,8 @@ func (w *closeCallbackPacketConn) Upstream() any {
 
 func NewCloseCallbackPacketConn(conn C.PacketConn, callback func()) C.PacketConn {
 	return &closeCallbackPacketConn{PacketConn: conn, closeFunc: callback}
+}
+
+func (w *closeCallbackPacketConn) CreatePacketBatchWriterWithCount() (SN.PacketBatchWriterWithCount, bool) {
+	return N.CreatePacketBatchWriterWithCount(w.PacketConn)
 }

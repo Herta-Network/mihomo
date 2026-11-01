@@ -1298,7 +1298,7 @@ func (z *ZeroTier) ListenPacketContext(ctx context.Context, metadata *C.Metadata
 	if packetConn == nil {
 		return nil, errors.New("packetConn is nil")
 	}
-	return NewPacketConn(&zeroTierPacketConn{PacketConn: packetConn, validateDestination: func(destination netip.Addr) error {
+	return NewPacketConn(withPacketProgress(&zeroTierPacketConn{PacketConn: packetConn, validateDestination: func(destination netip.Addr) error {
 		currentLink, currentDevice, validateErr := z.networkStackFor(destination)
 		if validateErr != nil {
 			return validateErr
@@ -1307,7 +1307,7 @@ func (z *ZeroTier) ListenPacketContext(ctx context.Context, metadata *C.Metadata
 			return errors.New("ZeroTier stack changed while packet connection was active")
 		}
 		return nil
-	}}, z), nil
+	}}, false), z), nil
 }
 
 func (z *ZeroTier) ResolveUDP(ctx context.Context, metadata *C.Metadata) error {

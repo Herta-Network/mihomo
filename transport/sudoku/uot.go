@@ -8,8 +8,12 @@ import (
 	"math"
 	"net"
 	"net/netip"
-	"sync"
 	"time"
+
+	"github.com/metacubex/mihomo/common/net/packetbatch"
+	"github.com/metacubex/sing/common/buf"
+	M "github.com/metacubex/sing/common/metadata"
+	N "github.com/metacubex/sing/common/network"
 
 	"github.com/metacubex/mihomo/common/pool"
 	"github.com/metacubex/mihomo/log"
@@ -99,9 +103,9 @@ func (u *UoTReader) ReadDatagram() (socks5.Addr, []byte, error) {
 
 // UoTPacketConn adapts a net.Conn with the Sudoku UoT framing to net.PacketConn.
 type UoTPacketConn struct {
-	conn    net.Conn
-	reader  *UoTReader
-	writeMu sync.Mutex
+	conn   net.Conn
+	reader *UoTReader
+	writes packetbatch.State
 }
 
 func NewUoTPacketConn(conn net.Conn) *UoTPacketConn {
@@ -137,27 +141,37 @@ func (c *UoTPacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
 }
 
 func (c *UoTPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
-	if addr == nil {
-		return 0, errors.New("address is nil")
+	n, err := c.WritePacketBatchCount([]*buf.Buffer{buf.As(p)}, []M.Socksaddr{M.SocksaddrFromNet(addr)})
+	if n == 1 {
+		return len(p), err
 	}
-	appendAddr := func(b []byte) ([]byte, error) { return AppendAddress(b, addr.String()) }
-	if udpAddr, ok := addr.(*net.UDPAddr); ok {
-		if ap := udpAddr.AddrPort(); ap.Addr().IsValid() {
-			appendAddr = func(b []byte) ([]byte, error) { return AppendAddrPort(b, ap), nil }
+	return 0, err
+}
+func (c *UoTPacketConn) FrontHeadroom() int { return uotHeaderSize + socks5.MaxAddrLen }
+func (c *UoTPacketConn) WritePacketBatchCount(buffers []*buf.Buffer, destinations []M.Socksaddr) (int, error) {
+	return c.writes.WriteStream(c.conn, c.conn, buffers, destinations, func(buffer *buf.Buffer, dest M.Socksaddr) (*buf.Buffer, error) {
+		if buffer.Len() > math.MaxUint16 {
+			return nil, io.ErrShortBuffer
 		}
-	}
-
-	c.writeMu.Lock()
-	defer c.writeMu.Unlock()
-	if err := writeDatagram(c.conn, p, appendAddr); err != nil {
-		return 0, err
-	}
-	return len(p), nil
+		var storage [uotHeaderSize + socks5.MaxAddrLen]byte
+		var header []byte
+		var err error
+		if dest.IsIP() {
+			header = AppendAddrPort(storage[:uotHeaderSize], dest.AddrPort())
+		} else {
+			header, err = AppendAddress(storage[:uotHeaderSize], dest.String())
+		}
+		if err != nil {
+			return nil, err
+		}
+		binary.BigEndian.PutUint16(header, uint16(len(header)-uotHeaderSize))
+		binary.BigEndian.PutUint16(header[2:], uint16(buffer.Len()))
+		buffer = (N.ReadWaitOptions{FrontHeadroom: len(header)}).Copy(buffer)
+		copy(buffer.ExtendHeader(len(header)), header)
+		return buffer, nil
+	})
 }
-
-func (c *UoTPacketConn) Close() error {
-	return c.conn.Close()
-}
+func (c *UoTPacketConn) Close() error { return c.writes.Close(c.conn) }
 
 func (c *UoTPacketConn) LocalAddr() net.Addr {
 	return c.conn.LocalAddr()

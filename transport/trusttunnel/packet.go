@@ -5,6 +5,7 @@ import (
 	"math"
 	"net"
 
+	"github.com/metacubex/mihomo/common/net/packetbatch"
 	"github.com/metacubex/sing/common"
 	"github.com/metacubex/sing/common/buf"
 	E "github.com/metacubex/sing/common/exceptions"
@@ -16,6 +17,7 @@ import (
 type packetConn struct {
 	httpConn
 	readWaitOptions N.ReadWaitOptions
+	writes          packetbatch.State
 }
 
 func (c *packetConn) InitializeReadWaiter(options N.ReadWaitOptions) (needCopy bool) {
@@ -100,51 +102,8 @@ func (u *clientPacketConn) readPacketFromServer(buffer *buf.Buffer) (destination
 }
 
 func (u *clientPacketConn) writePacketToServer(buffer *buf.Buffer, source M.Socksaddr) error {
-	defer buffer.Release()
-	if !source.IsIP() {
-		return E.New("only support IP")
-	}
-	appName := AppName
-	if len(appName) > math.MaxUint8 {
-		appName = appName[:math.MaxUint8]
-	}
-	payloadLen := buffer.Len()
-	headerLen := 4 + 16 + 2 + 16 + 2 + 1 + len(appName)
-	lengthField := uint32(16 + 2 + 16 + 2 + 1 + len(appName) + payloadLen)
-	destinationAddress := buildPaddingIP(source.Addr)
-
-	var (
-		header         *buf.Buffer
-		headerInBuffer bool
-	)
-	if buffer.Start() >= headerLen {
-		headerBytes := buffer.ExtendHeader(headerLen)
-		header = buf.With(headerBytes)
-		headerInBuffer = true
-	} else {
-		header = buf.NewSize(headerLen)
-		defer header.Release()
-	}
-	common.Must(binary.Write(header, binary.BigEndian, lengthField))
-	common.Must(header.WriteZeroN(16 + 2)) // Source address:port (unknown)
-	common.Must1(header.Write(destinationAddress[:]))
-	common.Must(binary.Write(header, binary.BigEndian, source.Port))
-	common.Must(binary.Write(header, binary.BigEndian, uint8(len(appName))))
-	common.Must1(header.WriteString(appName))
-	if !headerInBuffer {
-		_, err := u.writer.Write(header.Bytes())
-		if err != nil {
-			return err
-		}
-	}
-	_, err := u.writer.Write(buffer.Bytes())
-	if err != nil {
-		return err
-	}
-	if u.flusher != nil {
-		u.flusher.Flush()
-	}
-	return nil
+	_, err := u.WritePacketBatchCount([]*buf.Buffer{buffer}, []M.Socksaddr{source})
+	return err
 }
 
 var (
@@ -236,45 +195,6 @@ func (u *serverPacketConn) readPacketFromClient(buffer *buf.Buffer) (destination
 }
 
 func (u *serverPacketConn) writePacketToClient(buffer *buf.Buffer, source M.Socksaddr) error {
-	defer buffer.Release()
-	if !source.IsIP() {
-		return E.New("only support IP")
-	}
-	payloadLen := buffer.Len()
-	headerLen := 4 + 16 + 2 + 16 + 2
-	lengthField := uint32(16 + 2 + 16 + 2 + payloadLen)
-	sourceAddress := buildPaddingIP(source.Addr)
-	var destinationAddress [16]byte
-	var destinationPort uint16
-	var (
-		header         *buf.Buffer
-		headerInBuffer bool
-	)
-	if buffer.Start() >= headerLen {
-		headerBytes := buffer.ExtendHeader(headerLen)
-		header = buf.With(headerBytes)
-		headerInBuffer = true
-	} else {
-		header = buf.NewSize(headerLen)
-		defer header.Release()
-	}
-	common.Must(binary.Write(header, binary.BigEndian, lengthField))
-	common.Must1(header.Write(sourceAddress[:]))
-	common.Must(binary.Write(header, binary.BigEndian, source.Port))
-	common.Must1(header.Write(destinationAddress[:]))
-	common.Must(binary.Write(header, binary.BigEndian, destinationPort))
-	if !headerInBuffer {
-		_, err := u.writer.Write(header.Bytes())
-		if err != nil {
-			return err
-		}
-	}
-	_, err := u.writer.Write(buffer.Bytes())
-	if err != nil {
-		return err
-	}
-	if u.flusher != nil {
-		u.flusher.Flush()
-	}
-	return nil
+	_, err := u.WritePacketBatchCount([]*buf.Buffer{buffer}, []M.Socksaddr{source})
+	return err
 }

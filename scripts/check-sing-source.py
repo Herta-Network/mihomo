@@ -8,6 +8,13 @@ ROOT = Path(__file__).resolve().parent.parent
 EXPECTED = "github.com/metacubex/sing"
 FORK = "github.com/Herta-Network/sing"
 IDENTITIES = {EXPECTED, FORK, "github.com/sagernet/sing"}
+FIXED_FORKS = {
+    EXPECTED: FORK,
+    "github.com/sagernet/cronet-go": "github.com/Herta-Network/cronet-go",
+    "github.com/sagernet/sing-snell": "github.com/Herta-Network/sing-snell",
+    "github.com/metacubex/sing-vmess": "github.com/Herta-Network/sing-vmess",
+    "github.com/metacubex/sing-mux": "github.com/Herta-Network/sing-mux",
+}
 
 
 def go(*args):
@@ -22,8 +29,13 @@ def json_stream(raw):
         raw = raw.lstrip()[end:]
 
 
-modules = [m for m in json_stream(go("list", "-mod=readonly", "-m", "-json", "all"))
-           if m["Path"] in IDENTITIES]
+all_modules = list(json_stream(go("list", "-mod=readonly", "-m", "-json", "all")))
+modules = [m for m in all_modules if m["Path"] in IDENTITIES]
+by_path = {m["Path"]: m for m in all_modules}
+for identity, fork in FIXED_FORKS.items():
+    replacement = by_path.get(identity, {}).get("Replace", {})
+    if replacement.get("Path") != fork or not replacement.get("Version"):
+        raise SystemExit(f"{identity} must use a fixed remote fork revision: {replacement}")
 if len(modules) != 1 or modules[0]["Path"] != EXPECTED:
     raise SystemExit(f"Expected one sing module identity, found: {modules}")
 replacement = modules[0].get("Replace", {})

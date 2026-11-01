@@ -198,7 +198,7 @@ func (o *OpenVPN) ListenPacketContext(ctx context.Context, metadata *C.Metadata)
 	if pc == nil {
 		return nil, errors.New("packetConn is nil")
 	}
-	return NewPacketConn(pc, o), nil
+	return NewPacketConn(withPacketProgress(pc, false), o), nil
 }
 
 func (o *OpenVPN) ResolveUDP(ctx context.Context, metadata *C.Metadata) error {

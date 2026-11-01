@@ -2,7 +2,7 @@
 
 `github.com/metacubex/sing` is replaced with the fixed Herta-Network revision
 `a402b0b490ba3514b46e242c0630420da7fec151` in `go.mod`. This also selects the fork
-for MetaCubeX protocol dependencies that import that module path. The cronet-go and sing-snell forks use this same module path. Their public
+for MetaCubeX protocol dependencies that import that module path. The cronet-go, sing-snell, sing-vmess and sing-mux forks use this same module path. Their public
 package paths remain unchanged, but their sources are selected with fixed fork
 replacements. There is no separate `github.com/sagernet/sing` in the production
 module graph, including `with_naive` builds.
@@ -13,6 +13,8 @@ No local checkout or moving branch is needed to build mihomo.
 | `github.com/metacubex/sing` | Herta-Network/sing `a402b0b490ba` |
 | `github.com/sagernet/cronet-go` | Herta-Network/cronet-go `511fbbf40a07` |
 | `github.com/sagernet/sing-snell` | Herta-Network/sing-snell `42f9d87468f7` |
+| `github.com/metacubex/sing-vmess` | Herta-Network/sing-vmess `12f108ffaf84` |
+| `github.com/metacubex/sing-mux` | Herta-Network/sing-mux `c0be7c45926a` |
 
 ## Data paths
 
@@ -75,7 +77,55 @@ HTTP/TLS obfuscation preserves payload progress and rejects short handshakes.
 Scalar and batch writes share the connection's lock and terminal error state;
 closing interrupts blocked writes. Counts describe local write completion, not
 peer delivery. Payload validation leaves the nonce unchanged when no record was
-sent. Other protocol adapters still need their own explicit counted capability.
+sent.
+
+## Protocol capability coverage
+
+Every UDP transport adapter now exposes a counted capability or preserves the
+capability of its chosen backend. The operation differs by transport; exposing
+packet progress does not imply a kernel batch or a throughput improvement.
+
+| Adapters | Send operation |
+| --- | --- |
+| DIRECT / standard unconnected UDP | Native packet batching where available; atomic scalar packet fallback on other platforms. The loopback close callback preserves the capability. |
+| Shadowsocks none/stream/AEAD/2022, SOCKS5, SSR | Run the existing address/protocol/cipher encoder, then batch the resulting wire datagrams through the underlying counted packet transport. An opaque proxy-chain transport retains scalar writes. |
+| Snell v3-v6 | Count complete encrypted records, including v6 shaping and obfuscation. |
+| Trojan, VLESS, VMess, XUDP, packetaddr, Gost Relay, Sudoku, TrustTunnel, Mieru | Encode complete logical datagrams and join stream writes. Progress includes lazy headers and excludes any incomplete packet. Mieru retains its SDK packet-over-stream framing. |
+| sing-mux bound and full-cone UDP | Native framed batches over h2mux/smux/yamux; both client and server expose progress. |
+| Shadowsocks UoT, AnyTLS, Naive UoT, TUIC UoT | Preserve the existing counted UoT path. |
+| Hysteria, Hysteria2, TUIC native/QUIC packet modes, ShadowQUIC, VLESS Reverse | Count successful calls through the original protocol engine. QUIC fragmentation, channel ownership and routing remain in that engine; this is sequential packet submission, not a raw-socket shortcut. |
+| WireGuard, Tailscale, EasyTier, MASQUE, OpenVPN, ZeroTier | Count the existing network stack's packet operations. ZeroTier's destination/stack validation runs for every packet. |
+
+DNS hijacking, rejection and rematch adapters are special local actions, not
+network transports. Unknown wrappers still require an explicit capability;
+they are not unwrapped to guess whether their underlying socket can batch.
+
+All write adapters retain the original read waiter and ownership of prefetched
+packets. Wrapping a userspace stack preserves its native packet deadline path.
+Stream failures close and poison the logical connection; independent
+QUIC/datagram operations retain their protocol's error behavior. TUIC v4/v5
+close state is atomic, and Close no longer mutates the reader pointer while
+another goroutine can be using it.
+
+The VMess fork removes the TCP-only 15 KB chunk limiter from UDP writes while
+preserving cipher, nonce, mask and padding layers. XUDP now forwards empty UDP
+frames. Plaintext VMess UDP still rejects empty payloads because a zero-length
+chunk is a termination marker. Size/address checks run before advancing the
+encoder; bound associations reject a different destination. sing-mux includes
+an actual zero-length packet after its first request header and returns bound
+source addresses from packet reads.
+
+Trojan now carries a full uint16-sized datagram in one frame instead of splitting
+it at 8 KiB. Its receive buffer follows the advertised packet length, and a short
+ReadFrom buffer discards the remainder of that datagram. Mieru distinguishes an
+empty decoded UDP payload from EOF before the next stream frame. HTTP,
+WebSocket/early-data, VLESS request and GUN framing preserve payload write counts
+when a lower write fails or returns a short success.
+
+The [Snell performance report](benchmarks/snell-2026-11-01.md) compares the
+committed Snell implementation with its parent using actual local packet traffic.
+It reports both throughput gains and increased allocation traffic; it does not
+claim a general memory reduction or measure all of the adapters above.
 
 Datagram receive capacity is independent of low-memory stream buffers. Generic
 packet connections allow a full UDP datagram, and legacy Snell reads reserve
@@ -85,12 +135,12 @@ its full protocol record size, preventing low-memory truncation.
 
 ```sh
 SKIP_INTEROP_TEST=1 go test -race \
-  ./common/net/... ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell ./transport/simple-obfs ./transport/shadowsocks/shadowaead \
-  -run 'TestRelay|TestPacket|TestSingPacketIntegration|TestInboundSnellBatch|TestTLSPayloadCount' -count=1 -timeout=90s
+  ./common/net/... ./common/callback ./adapter/outbound ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell ./transport/trojan ./transport/vless ./transport/vless/reverse ./transport/vmess ./transport/gost ./transport/gun ./transport/sudoku ./transport/trusttunnel ./transport/simple-obfs ./transport/shadowsocks/shadowaead \
+  -run 'TestRelay|TestPacket|TestProtocolPacket|TestSingPacketIntegration|TestInboundSnellBatch|TestTLSPayloadCount|TestReverse' -count=1 -timeout=90s
 
 SKIP_INTEROP_TEST=1 go test -tags with_low_memory \
-  ./common/net/... ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell ./transport/simple-obfs ./transport/shadowsocks/shadowaead \
-  -run 'TestRelay|TestPacket|TestSingPacketIntegration|TestInboundSnellBatch|TestTLSPayloadCount' -count=1 -timeout=90s
+  ./common/net/... ./common/callback ./adapter/outbound ./listener/sing ./listener/sing_shadowsocks ./listener/inbound ./tunnel/... ./transport/snell ./transport/trojan ./transport/vless ./transport/vless/reverse ./transport/vmess ./transport/gost ./transport/gun ./transport/sudoku ./transport/trusttunnel ./transport/simple-obfs ./transport/shadowsocks/shadowaead \
+  -run 'TestRelay|TestPacket|TestProtocolPacket|TestSingPacketIntegration|TestInboundSnellBatch|TestTLSPayloadCount|TestReverse' -count=1 -timeout=90s
 ```
 
 These cover TCP half-close/counters/protocol wrappers, empty and 60 KB native
@@ -100,7 +150,13 @@ Shadowsocks AEAD/2022 plus UoT v1/v2 with traffic counters. Snell regressions co
 v3-v6 batch capability through the production wrappers, empty packets, IPv4/IPv6,
 HTTP/TLS obfuscation, v6 modes, partial progress, 64-record boundaries and blocked
 write shutdown. The fork also tests both UDP directions and nonce preservation
-after validation errors. The Test workflow runs
+after validation errors. Additional cases exercise SOCKS5/SSR framing, VMess and
+VLESS plain/XUDP/packetaddr, WebSocket/early-data/gRPC carriers, sing-mux's three
+transports, Sudoku, TrustTunnel h2/QUIC, Hysteria2, TUIC v4/v5 and concurrent QUIC
+write/close. Mieru is tested against its SDK framing, without a live remote Mieru
+service. Virtual VPN/mesh stacks and ShadowQUIC/Hysteria v1 have interface and
+build coverage, not a newly performed live-network end-to-end run.
+The Test workflow runs
 these on Linux, macOS and Windows before the existing macOS inbound-test
 exclusion, and also supports the `Meta` branch and manual dispatch.
 

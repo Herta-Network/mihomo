@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/metacubex/mihomo/common/net/packetbatch"
+	"github.com/metacubex/sing/common/buf"
 
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
@@ -296,38 +300,73 @@ func (v *Vmess) streamConnContext(ctx context.Context, c net.Conn, metadata *C.M
 		}
 	}
 	if metadata.NetWork == C.UDP {
-		if v.option.XUDP {
-			var globalID [8]byte
-			if metadata.SourceValid() {
-				globalID = utils.GlobalID(metadata.SourceAddress())
+		destination := M.SocksaddrFromNet(metadata.UDPAddr())
+		options := packetbatch.StreamEncoderOptions{Destination: destination, Validate: func(buffer *buf.Buffer, target M.Socksaddr) error {
+			if !v.option.XUDP {
+				limit := vmess.MaxPacketPayload
+				if v.option.PacketAddr {
+					limit -= packetaddr.AddressSerializer.AddrPortLen(target)
+				}
+				if buffer.Len() > limit {
+					return io.ErrShortBuffer
+				}
 			}
-			if useEarly {
-				conn = v.client.DialEarlyXUDPPacketConn(c,
-					globalID,
-					M.SocksaddrFromNet(metadata.UDPAddr()))
+			if !v.option.XUDP && !v.option.PacketAddr {
+				if err := packetbatch.CheckDestination(target, destination); err != nil {
+					return ErrUDPRemoteAddrMismatch
+				}
+				if buffer.IsEmpty() && (v.option.Cipher == "none" || v.option.Cipher == "zero") {
+					return errors.New("empty UDP packet is unsupported by VMess without encryption")
+				}
+			}
+			if v.option.PacketAddr && target.IsFqdn() {
+				return packetaddr.ErrFqdnUnsupported
+			}
+			return nil
+		}}
+		return packetbatch.NewStreamEncoder(c, func(c net.Conn) (net.Conn, error) {
+			var conn net.Conn
+			var err error
+
+			if v.option.XUDP {
+				var globalID [8]byte
+				if metadata.SourceValid() {
+					globalID = utils.GlobalID(metadata.SourceAddress())
+				}
+				if useEarly {
+					conn = v.client.DialEarlyXUDPPacketConn(c,
+						globalID,
+						M.SocksaddrFromNet(metadata.UDPAddr()))
+				} else {
+					conn, err = v.client.DialXUDPPacketConn(c,
+						globalID,
+						M.SocksaddrFromNet(metadata.UDPAddr()))
+				}
+			} else if v.option.PacketAddr {
+				if useEarly {
+					conn = v.client.DialEarlyPacketConn(c,
+						M.ParseSocksaddrHostPort(packetaddr.SeqPacketMagicAddress, 443))
+				} else {
+					conn, err = v.client.DialPacketConn(c,
+						M.ParseSocksaddrHostPort(packetaddr.SeqPacketMagicAddress, 443))
+				}
+				if err == nil {
+					conn = packetaddr.NewBindConn(conn)
+				}
 			} else {
-				conn, err = v.client.DialXUDPPacketConn(c,
-					globalID,
-					M.SocksaddrFromNet(metadata.UDPAddr()))
+				if useEarly {
+					conn = v.client.DialEarlyPacketConn(c,
+						M.SocksaddrFromNet(metadata.UDPAddr()))
+				} else {
+					conn, err = v.client.DialPacketConn(c,
+						M.SocksaddrFromNet(metadata.UDPAddr()))
+				}
 			}
-		} else if v.option.PacketAddr {
-			if useEarly {
-				conn = v.client.DialEarlyPacketConn(c,
-					M.ParseSocksaddrHostPort(packetaddr.SeqPacketMagicAddress, 443))
-			} else {
-				conn, err = v.client.DialPacketConn(c,
-					M.ParseSocksaddrHostPort(packetaddr.SeqPacketMagicAddress, 443))
+			if err != nil {
+				return nil, err
 			}
-			conn = packetaddr.NewBindConn(conn)
-		} else {
-			if useEarly {
-				conn = v.client.DialEarlyPacketConn(c,
-					M.SocksaddrFromNet(metadata.UDPAddr()))
-			} else {
-				conn, err = v.client.DialPacketConn(c,
-					M.SocksaddrFromNet(metadata.UDPAddr()))
-			}
-		}
+			return conn, nil
+		}, options)
 	} else {
 		if useEarly {
 			conn = v.client.DialEarlyConn(c,

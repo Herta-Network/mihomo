@@ -188,3 +188,7 @@ replace github.com/metacubex/sing => github.com/Herta-Network/sing v0.0.0-202611
 replace github.com/sagernet/cronet-go => github.com/Herta-Network/cronet-go v0.0.0-20261101093049-511fbbf40a07
 
 replace github.com/sagernet/sing-snell => github.com/Herta-Network/sing-snell v0.0.0-20261101103437-42f9d87468f7
+
+replace github.com/metacubex/sing-vmess => github.com/Herta-Network/sing-vmess v0.0.0-20261101114133-12f108ffaf84
+
+replace github.com/metacubex/sing-mux => github.com/Herta-Network/sing-mux v0.0.0-20261101114134-c0be7c45926a

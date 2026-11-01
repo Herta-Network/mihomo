@@ -23,8 +23,11 @@ func CreatePacketBatchWriterWithCount(conn net.PacketConn) (N.PacketBatchWriterW
 	if writer, ok := conn.(N.PacketWriter); ok {
 		return bufio.CreatePacketBatchWriterWithCount(writer)
 	}
-	if conn, ok := conn.(*net.UDPConn); ok {
-		return bufio.CreatePacketBatchWriterWithCount(bufio.NewPacketConn(conn))
+	if conn, ok := conn.(*net.UDPConn); ok && conn.RemoteAddr() == nil {
+		// A standard unconnected UDP socket has atomic packet writes even on
+		// platforms without sendmmsg/sendmsg_x. Preserve progress there with the
+		// packet API fallback; this does not expose arbitrary stream wrappers.
+		return bufio.NewPacketBatchWriterWithCount(bufio.NewPacketConn(conn)), true
 	}
 	return nil, false
 }

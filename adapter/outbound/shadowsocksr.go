@@ -7,6 +7,8 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/metacubex/mihomo/common/net/packetbatch"
+
 	N "github.com/metacubex/mihomo/common/net"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/shadowsocks/core"
@@ -94,9 +96,12 @@ func (ssr *ShadowSocksR) ListenPacketContext(ctx context.Context, metadata *C.Me
 		return nil, err
 	}
 
-	epc := ssr.cipher.PacketConn(N.NewEnhancePacketConn(pc))
-	epc = ssr.protocol.PacketConn(epc)
-	return NewPacketConn(&ssrPacketConn{EnhancePacketConn: epc, rAddr: addr}, ssr), nil
+	encoded := packetbatch.NewDatagramEncoder(pc, func(raw net.PacketConn) net.PacketConn {
+		epc := ssr.cipher.PacketConn(N.NewEnhancePacketConn(raw))
+		epc = ssr.protocol.PacketConn(epc)
+		return &ssrPacketConn{EnhancePacketConn: epc, rAddr: addr}
+	})
+	return NewPacketConn(encoded, ssr), nil
 }
 
 // ProxyInfo implements C.ProxyAdapter

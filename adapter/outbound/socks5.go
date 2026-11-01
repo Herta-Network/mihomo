@@ -9,6 +9,8 @@ import (
 	"net/netip"
 	"strconv"
 
+	"github.com/metacubex/mihomo/common/net/packetbatch"
+
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/component/ca"
 	C "github.com/metacubex/mihomo/constant"
@@ -152,7 +154,9 @@ func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata)
 		pc.Close()
 	}()
 
-	return NewPacketConn(&socksPacketConn{PacketConn: pc, rAddr: bindUDPAddr, tcpConn: c}, ss), nil
+	return NewPacketConn(packetbatch.NewDatagramEncoder(pc, func(raw net.PacketConn) net.PacketConn {
+		return &socksPacketConn{PacketConn: raw, rAddr: bindUDPAddr, tcpConn: c}
+	}), ss), nil
 }
 
 // ProxyInfo implements C.ProxyAdapter

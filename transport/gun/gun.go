@@ -145,7 +145,13 @@ func (g *Conn) Write(b []byte) (n int, err error) {
 	binary.PutUvarint(buf[6:], uint64(dataLen))
 	copy(buf[6+varLen:], b)
 
-	_, err = g.writer.Write(buf)
+	written, writeErr := g.writer.Write(buf)
+	err = writeErr
+	if written < 0 || written > len(buf) {
+		written, err = 0, io.ErrShortWrite
+	} else if written != len(buf) && err == nil {
+		err = io.ErrShortWrite
+	}
 	if err == io.ErrClosedPipe {
 		if initErr := g.Init(); initErr != nil {
 			err = initErr
@@ -156,7 +162,7 @@ func (g *Conn) Write(b []byte) (n int, err error) {
 		flusher.Flush()
 	}
 
-	return len(b), err
+	return max(0, min(len(b), written-(6+varLen))), err
 }
 
 func (g *Conn) WriteBuffer(buffer *buf.Buffer) error {

@@ -474,7 +474,7 @@ func (e *EasyTier) ListenPacketContext(ctx context.Context, metadata *C.Metadata
 	if pc == nil {
 		return nil, errors.New("packetConn is nil")
 	}
-	return NewPacketConn(pc, e), nil
+	return NewPacketConn(withPacketProgress(pc, false), e), nil
 }
 
 func (e *EasyTier) ResolveUDP(ctx context.Context, metadata *C.Metadata) error {

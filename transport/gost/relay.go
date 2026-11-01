@@ -5,13 +5,15 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"net/netip"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/metacubex/mihomo/common/net/packetbatch"
+	"github.com/metacubex/sing/common/buf"
+	M "github.com/metacubex/sing/common/metadata"
 
 	C "github.com/metacubex/mihomo/constant"
 	mihomoVMess "github.com/metacubex/mihomo/transport/vmess"
@@ -285,9 +287,9 @@ func writeRelayRequest(w io.Writer, command byte, address string, network uint16
 }
 
 type relayPacketConn struct {
-	conn  net.Conn
-	raddr net.Addr
-	wmu   sync.Mutex
+	conn   net.Conn
+	raddr  net.Addr
+	writes packetbatch.State
 }
 
 func (c *relayPacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
@@ -310,30 +312,27 @@ func (c *relayPacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
 }
 
 func (c *relayPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
-	if len(p) > math.MaxUint16 {
-		return 0, fmt.Errorf("gost relay udp packet too large: %d", len(p))
+	if addr == nil {
+		addr = c.raddr
 	}
-	if addr != nil && c.raddr != nil && addr.String() != c.raddr.String() {
-		return 0, fmt.Errorf("gost relay udp association is bound to %s, got %s", c.raddr, addr)
+	n, err := c.WritePacketBatchCount([]*buf.Buffer{buf.As(p)}, []M.Socksaddr{M.SocksaddrFromNet(addr)})
+	if n == 1 {
+		return len(p), err
 	}
-
-	c.wmu.Lock()
-	defer c.wmu.Unlock()
-
-	var header [2]byte
-	binary.BigEndian.PutUint16(header[:], uint16(len(p)))
-	if _, err := c.conn.Write(header[:]); err != nil {
-		return 0, err
-	}
-	if _, err := c.conn.Write(p); err != nil {
-		return 0, err
-	}
-	return len(p), nil
+	return 0, err
 }
-
-func (c *relayPacketConn) Close() error {
-	return c.conn.Close()
+func (c *relayPacketConn) WritePacketBatchCount(buffers []*buf.Buffer, destinations []M.Socksaddr) (int, error) {
+	return c.writes.WriteStream(c.conn, c.conn, buffers, destinations, func(b *buf.Buffer, dest M.Socksaddr) (*buf.Buffer, error) {
+		if c.raddr != nil {
+			if err := packetbatch.CheckDestination(dest, M.SocksaddrFromNet(c.raddr)); err != nil {
+				return nil, err
+			}
+		}
+		return packetbatch.PrepareLengthPacket(b, dest)
+	})
 }
+func (c *relayPacketConn) FrontHeadroom() int { return 2 }
+func (c *relayPacketConn) Close() error       { return c.writes.Close(c.conn) }
 
 func (c *relayPacketConn) LocalAddr() net.Addr {
 	return c.conn.LocalAddr()

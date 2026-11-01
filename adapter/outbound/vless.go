@@ -4,11 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/netip"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/metacubex/mihomo/common/net/packetbatch"
+	"github.com/metacubex/sing/common/buf"
 
 	"github.com/metacubex/mihomo/common/convert"
 	N "github.com/metacubex/mihomo/common/net"
@@ -413,16 +417,30 @@ func (v *Vless) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (
 		if metadata.SourceValid() {
 			globalID = utils.GlobalID(metadata.SourceAddress())
 		}
-		return NewPacketConn(N.NewThreadSafePacketConn(
-			vmessSing.NewXUDPConn(c,
-				globalID,
-				M.SocksaddrFromNet(metadata.UDPAddr())),
-		), v), nil
+		destination := M.SocksaddrFromNet(metadata.UDPAddr())
+		encoded, err := packetbatch.NewStreamEncoder(c, func(raw net.Conn) (net.Conn, error) { return vmessSing.NewXUDPConn(raw, globalID, destination), nil }, packetbatch.StreamEncoderOptions{Destination: destination})
+		if err != nil {
+			return nil, err
+		}
+		return NewPacketConn(N.NewThreadSafePacketConn(encoded), v), nil
 	} else if v.option.PacketAddr {
-		return NewPacketConn(N.NewThreadSafePacketConn(
-			packetaddr.NewConn(v.client.PacketConn(c, metadata.UDPAddr()),
-				M.SocksaddrFromNet(metadata.UDPAddr())),
-		), v), nil
+		destination := M.SocksaddrFromNet(metadata.UDPAddr())
+		options := packetbatch.StreamEncoderOptions{Destination: destination, Validate: func(buffer *buf.Buffer, target M.Socksaddr) error {
+			if target.IsFqdn() {
+				return packetaddr.ErrFqdnUnsupported
+			}
+			if buffer.Len() > 65535-M.MaxIPSocksaddrLength {
+				return io.ErrShortBuffer
+			}
+			return nil
+		}}
+		encoded, err := packetbatch.NewStreamEncoder(c, func(raw net.Conn) (net.Conn, error) {
+			return packetaddr.NewConn(v.client.PacketConn(raw, metadata.UDPAddr()), destination), nil
+		}, options)
+		if err != nil {
+			return nil, err
+		}
+		return NewPacketConn(N.NewThreadSafePacketConn(encoded), v), nil
 	}
 	return NewPacketConn(N.NewThreadSafePacketConn(v.client.PacketConn(c, metadata.UDPAddr())), v), nil
 }

@@ -10,13 +10,14 @@ import (
 	"sync"
 
 	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/common/net/packetbatch"
 	"github.com/metacubex/mihomo/common/pool"
 	"github.com/metacubex/mihomo/transport/socks5"
 )
 
 const (
 	// max packet length
-	maxLength = 8192
+	maxLength = 65535
 )
 
 var (
@@ -47,7 +48,10 @@ func WriteHeader(w io.Writer, hexPassword [KeyLength]byte, command Command, sock
 	buf.Write(socks5Addr)
 	buf.Write(crlf)
 
-	_, err := w.Write(buf.Bytes())
+	n, err := w.Write(buf.Bytes())
+	if n != buf.Len() && err == nil {
+		err = io.ErrShortWrite
+	}
 	return err
 }
 
@@ -60,37 +64,20 @@ func writePacket(w io.Writer, socks5Addr, payload []byte) (int, error) {
 	buf.Write(crlf)
 	buf.Write(payload)
 
-	if _, err := w.Write(buf.Bytes()); err != nil {
+	if n, err := w.Write(buf.Bytes()); err != nil || n != buf.Len() {
+		if err == nil {
+			err = io.ErrShortWrite
+		}
 		return 0, err
 	}
 	return len(payload), nil
 }
 
 func WritePacket(w io.Writer, socks5Addr, payload []byte) (int, error) {
-	if len(payload) <= maxLength {
-		return writePacket(w, socks5Addr, payload)
+	if len(payload) > maxLength {
+		return 0, errors.New("trojan UDP payload too large")
 	}
-
-	offset := 0
-	total := len(payload)
-	for {
-		cursor := offset + maxLength
-		if cursor > total {
-			cursor = total
-		}
-
-		n, err := writePacket(w, socks5Addr, payload[offset:cursor])
-		if err != nil {
-			return offset + n, err
-		}
-
-		offset = cursor
-		if offset == total {
-			break
-		}
-	}
-
-	return total, nil
+	return writePacket(w, socks5Addr, payload)
 }
 
 func ReadPacket(r io.Reader, payload []byte) (net.Addr, int, int, error) {
@@ -133,49 +120,23 @@ var _ N.EnhancePacketConn = (*PacketConn)(nil)
 
 type PacketConn struct {
 	net.Conn
-	remain int
-	rAddr  net.Addr
 	mux    sync.Mutex
+	writes packetbatch.State
 }
 
 func (pc *PacketConn) WriteTo(b []byte, addr net.Addr) (int, error) {
-	return WritePacket(pc, socks5.ParseAddrToSocksAddr(addr), b)
+	return pc.writePacketCount(b, addr)
 }
 
-func (pc *PacketConn) ReadFrom(b []byte) (int, net.Addr, error) {
-	pc.mux.Lock()
-	defer pc.mux.Unlock()
-	if pc.remain != 0 {
-		length := len(b)
-		if pc.remain < length {
-			length = pc.remain
-		}
-
-		n, err := pc.Conn.Read(b[:length])
-		if err != nil {
-			return 0, nil, err
-		}
-
-		pc.remain -= n
-		addr := pc.rAddr
-		if pc.remain == 0 {
-			pc.rAddr = nil
-		}
-
-		return n, addr, nil
+func (pc *PacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
+	data, release, addr, err := pc.WaitReadFrom()
+	if release != nil {
+		defer release()
 	}
-
-	addr, n, remain, err := ReadPacket(pc.Conn, b)
 	if err != nil {
 		return 0, nil, err
 	}
-
-	if remain != 0 {
-		pc.remain = remain
-		pc.rAddr = addr
-	}
-
-	return n, addr, nil
+	return copy(p, data), addr, nil
 }
 
 func (pc *PacketConn) WaitReadFrom() (data []byte, put func(), addr net.Addr, err error) {
@@ -192,41 +153,21 @@ func (pc *PacketConn) WaitReadFrom() (data []byte, put func(), addr net.Addr, er
 	}
 	addr = udpAddr
 
-	data = pool.Get(pool.UDPBufferSize)
-	put = func() {
-		_ = pool.Put(data)
-	}
-
-	_, err = io.ReadFull(pc.Conn, data[:2+2]) // u16be length + CR LF
-	if err != nil {
-		if put != nil {
-			put()
-		}
+	var header [4]byte
+	if _, err = io.ReadFull(pc.Conn, header[:]); err != nil {
 		return nil, nil, nil, err
 	}
-	length := binary.BigEndian.Uint16(data)
-	if length > maxLength {
-		if put != nil {
-			put()
-		}
-		return nil, nil, nil, errors.New("packet invalid")
-	}
-
-	if length > 0 {
-		data = data[:length]
-		_, err = io.ReadFull(pc.Conn, data)
-		if err != nil {
-			if put != nil {
-				put()
-			}
-			return nil, nil, nil, err
-		}
-	} else {
-		if put != nil {
-			put()
-		}
+	length := int(binary.BigEndian.Uint16(header[:2]))
+	if length == 0 {
 		return nil, nil, addr, nil
 	}
+	readBuf := pool.Get(length)
+	put = func() { _ = pool.Put(readBuf) }
+	if _, err = io.ReadFull(pc.Conn, readBuf); err != nil {
+		put()
+		return nil, nil, nil, err
+	}
+	data = readBuf
 
 	return
 }
