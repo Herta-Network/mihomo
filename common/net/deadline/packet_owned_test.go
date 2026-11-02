@@ -55,16 +55,16 @@ func (c *concurrentOwnedSource) Close() error { c.once.Do(func() { close(c.close
 
 func TestPacketDeadlineConcurrentReadAPIsDoNotStealResults(t *testing.T) {
 	const perReader = 150
-	raw := &concurrentOwnedSource{packets: make(chan uint16, 3*perReader), closed: make(chan struct{})}
-	for i := 0; i < 3*perReader; i++ {
+	raw := &concurrentOwnedSource{packets: make(chan uint16, 2*perReader), closed: make(chan struct{})}
+	for i := 0; i < 2*perReader; i++ {
 		raw.packets <- uint16(i)
 	}
 	conn := NewEnhancePacketConn(raw).(*EnhancePacketConn)
 	defer conn.Close()
 	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	seen := make(chan uint16, 3*perReader)
+	seen := make(chan uint16, 2*perReader)
 	var readers sync.WaitGroup
-	for method := 0; method < 3; method++ {
+	for method := 0; method < 2; method++ {
 		readers.Add(1)
 		go func(method int) {
 			defer readers.Done()
@@ -73,15 +73,10 @@ func TestPacketDeadlineConcurrentReadAPIsDoNotStealResults(t *testing.T) {
 				var release func()
 				var err error
 				switch method {
+
 				case 0:
-					var b *buf.Buffer
-					b, _, err = conn.ReadPacketBuffer()
-					if b != nil {
-						data, release = b.Bytes(), b.Release
-					}
-				case 1:
 					data, release, _, err = conn.WaitReadFrom()
-				case 2:
+				case 1:
 					var p [2]byte
 					var n int
 					n, _, err = conn.ReadFrom(p[:])
@@ -104,7 +99,7 @@ func TestPacketDeadlineConcurrentReadAPIsDoNotStealResults(t *testing.T) {
 	}
 	readers.Wait()
 	close(seen)
-	var received [3 * perReader]bool
+	var received [2 * perReader]bool
 	for value := range seen {
 		if int(value) >= len(received) || received[value] {
 			t.Fatalf("duplicate/corrupt packet %d", value)
@@ -127,7 +122,7 @@ func TestPacketDeadlineConcurrentReadAPIsDoNotStealResults(t *testing.T) {
 
 func TestPacketDeadlineCachedReadAPISwitch(t *testing.T) {
 	for _, source := range []string{"read-from", "wait-read-from", "read-packet", "wait-read-packet"} {
-		for _, target := range []string{"read-from", "wait-read-from", "read-packet", "wait-read-packet", "owned"} {
+		for _, target := range []string{"read-from", "wait-read-from", "read-packet", "wait-read-packet"} {
 			t.Run(source+"/"+target, func(t *testing.T) {
 				raw := &delayedEnhanceConn{&delayedPacketConn{closed: make(chan struct{})}}
 				conn := NewEnhancePacketConn(raw).(*EnhanceSingPacketConn)
@@ -174,14 +169,11 @@ func TestPacketDeadlineCachedReadAPISwitch(t *testing.T) {
 					buffer.Release()
 				default:
 					var buffer *buf.Buffer
-					if target == "owned" {
-						buffer, got, err = conn.ReadPacketBuffer()
-					} else {
-						waiter := &singPacketReadWaiter{netPacketConn: conn.NetPacketConn, options: N.ReadWaitOptions{FrontHeadroom: 8, RearHeadroom: 4}}
-						buffer, got, err = waiter.WaitReadPacket()
-						if buffer != nil && (buffer.Start() < 8 || buffer.FreeLen() < 4) {
-							t.Fatal("cached result lost waiter headroom")
-						}
+
+					waiter := &singPacketReadWaiter{netPacketConn: conn.NetPacketConn, options: N.ReadWaitOptions{FrontHeadroom: 8, RearHeadroom: 4}}
+					buffer, got, err = waiter.WaitReadPacket()
+					if buffer != nil && (buffer.Start() < 8 || buffer.FreeLen() < 4) {
+						t.Fatal("cached result lost waiter headroom")
 					}
 					if buffer != nil {
 						data = string(buffer.Bytes())
@@ -198,7 +190,9 @@ func TestPacketDeadlineCachedReadAPISwitch(t *testing.T) {
 
 type delayedOwnedConn struct{ *delayedEnhanceConn }
 
-func (c *delayedOwnedConn) ReadPacketBuffer() (*buf.Buffer, M.Socksaddr, error) {
+func (*delayedOwnedConn) InitializeReadWaiter(N.ReadWaitOptions) bool { return false }
+
+func (c *delayedOwnedConn) WaitReadPacket() (*buf.Buffer, M.Socksaddr, error) {
 	close(c.started)
 	<-c.deliver
 	close(c.finished)
@@ -217,7 +211,11 @@ func TestPacketDeadlineOwnedTimeoutSwitchAndClose(t *testing.T) {
 			conn := NewEnhancePacketConn(raw).(*EnhanceSingPacketConn)
 			defer conn.Close()
 			conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
-			if buffer, _, err := conn.ReadPacketBuffer(); buffer != nil || !errors.Is(err, os.ErrDeadlineExceeded) {
+			waiter, ok := conn.CreateReadWaiter()
+			if !ok {
+				t.Fatal("missing read waiter")
+			}
+			if buffer, _, err := waiter.WaitReadPacket(); buffer != nil || !errors.Is(err, os.ErrDeadlineExceeded) {
 				t.Fatalf("timeout buffer=%v err=%v", buffer, err)
 			}
 			<-raw.started

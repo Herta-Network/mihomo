@@ -8,7 +8,7 @@ import (
 	N "github.com/metacubex/sing/common/network"
 )
 
-// VectorWriter reuses the iovec descriptors for a serialized connection writer.
+// VectorWriter preserves exact byte progress for a serialized connection writer.
 // It consumes every input buffer. Only standard stream sockets use writev;
 // protocol wrappers keep their explicit counted method or their ordinary Write.
 // Calls must be serialized by the owning protocol's write lock.
@@ -16,9 +16,6 @@ type VectorWriter struct {
 	writer  io.Writer
 	counted N.VectorisedWriterWithCount
 	native  bool
-	inline  [4][]byte
-	storage net.Buffers
-	vectors net.Buffers
 }
 
 func NewVectorWriter(writer io.Writer) *VectorWriter {
@@ -27,7 +24,7 @@ func NewVectorWriter(writer io.Writer) *VectorWriter {
 	return w
 }
 
-// Reset changes the output while retaining scratch storage. It must run under
+// Reset changes the output. It must run under
 // the same owner lock as writes, including when a protocol replaces a wrapper.
 func (w *VectorWriter) Reset(writer io.Writer) {
 	w.writer, w.counted, w.native = writer, nil, false
@@ -50,21 +47,12 @@ func (w *VectorWriter) WriteVectorisedCount(buffers []*buf.Buffer) (int64, error
 	var written int64
 	var err error
 	if w.native {
-		if w.storage == nil {
-			w.storage = w.inline[:]
+		vectors := make(net.Buffers, len(buffers))
+		for i, b := range buffers {
+			vectors[i] = b.Bytes()
 		}
-		if len(buffers) > len(w.storage) {
-			w.storage = make(net.Buffers, len(buffers))
-		}
-		for i, buffer := range buffers {
-			w.storage[i] = buffer.Bytes()
-		}
-		w.vectors = w.storage[:len(buffers)]
-		written, err = w.vectors.WriteTo(w.writer)
-		// WriteTo advances the slice and its elements. Clear the original span
-		// as well, so neither successful nor failed writes retain payloads.
-		clear(w.storage[:len(buffers)])
-		w.vectors = nil
+		written, err = vectors.WriteTo(w.writer)
+
 	} else {
 		var data []byte
 		if len(buffers) == 1 {

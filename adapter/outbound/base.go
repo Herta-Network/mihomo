@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/net/packetbatch"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/proxydialer"
@@ -364,8 +363,6 @@ func NewPacketConn(pc net.PacketConn, a ProxyAdapter) C.PacketConn {
 		break
 	case ipstackConn: // exclusion *mipstack.UDPConn
 		break
-	case interface{ nativePacketDeadline() }:
-		break
 	default:
 		epc = N.NewDeadlineEnhancePacketConn(epc) // most conn from outbound can't handle readDeadline correctly
 	}
@@ -429,23 +426,3 @@ func NewAutoCloseProxyAdapter(adapter ProxyAdapter) ProxyAdapter {
 	runtime.SetFinalizer(proxy, (*autoCloseProxyAdapter).Close)
 	return proxy
 }
-
-// withPacketProgress is used only by adapters with a complete-datagram API.
-// Preserve a native counted writer when present; otherwise count accepted
-// calls through the protocol engine, without bypassing routing or encryption.
-func withPacketProgress(pc net.PacketConn, terminalErrors bool) net.PacketConn {
-	if _, ok := N.CreatePacketBatchWriterWithCount(pc); ok {
-		return pc
-	}
-	progress := packetbatch.NewProgressConn(pc, terminalErrors)
-	if _, native := pc.(ipstackConn); native {
-		return &nativeDeadlineProgress{ProgressConn: progress}
-	}
-	return progress
-}
-
-// Adding write progress must not add an emulated deadline/read goroutine to
-// a userspace stack that already supplied native packet deadlines.
-type nativeDeadlineProgress struct{ *packetbatch.ProgressConn }
-
-func (*nativeDeadlineProgress) nativePacketDeadline() {}

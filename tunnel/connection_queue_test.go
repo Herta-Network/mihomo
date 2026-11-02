@@ -38,7 +38,7 @@ func TestPacketSenderQueueWrapAndCapacity(t *testing.T) {
 	for _, packet := range adapters[senderCapacity+1:] {
 		s.Send(packet)
 	}
-	if s.queue.Len() != senderCapacity || s.queue.Cap() != senderCapacity {
+	if len(s.queue) != senderCapacity || cap(s.queue) != senderCapacity {
 		t.Fatal("bounded queue grew during wrap")
 	}
 	want := append(adapters[64:senderCapacity:senderCapacity], adapters[senderCapacity+1:]...)
@@ -64,7 +64,7 @@ func TestPacketSenderQueueWrapAndCapacity(t *testing.T) {
 	}
 }
 
-func TestPacketSenderQueueRepeatedEmptyWakeup(t *testing.T) {
+func TestPacketSenderQueueRepeatedEmptyToNonempty(t *testing.T) {
 	s := newPacketSender().(*packetSender)
 	metadata := &C.Metadata{NetWork: C.UDP, DstIP: netip.MustParseAddr("127.0.0.1"), DstPort: 53}
 	s.AddMapping(metadata, metadata)

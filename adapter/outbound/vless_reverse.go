@@ -6,6 +6,7 @@ import (
 	"net"
 	"sync/atomic"
 
+	"github.com/metacubex/mihomo/common/net/packetbatch"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/vless/reverse"
 	M "github.com/metacubex/sing/common/metadata"
@@ -67,7 +68,7 @@ func (v *VlessReverse) ListenPacketContext(ctx context.Context, metadata *C.Meta
 	if err != nil {
 		return nil, err
 	}
-	return NewPacketConn(withPacketProgress(conn, true), v), nil
+	return NewPacketConn(packetbatch.NewTerminalConn(conn), v), nil
 }
 func (v *VlessReverse) SupportUOT() bool { return true }
 func (v *VlessReverse) Close() error {

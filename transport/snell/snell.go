@@ -53,9 +53,8 @@ type packetFrameWriter interface {
 
 type Snell struct {
 	net.Conn
-	responseBuffers [1]*buf.Buffer
-	buffer          [1]byte
-	reply           bool
+	buffer [1]byte
+	reply  bool
 }
 
 func (s *Snell) Read(b []byte) (int, error) {
@@ -294,15 +293,19 @@ func WritePacketResponse(w io.Writer, addr net.Addr, payload []byte) (int, error
 	buf.Write(payload)
 
 	var err error
+	var written int
 	if fw, ok := w.(packetFrameWriter); ok {
-		_, err = fw.WritePacketFrame(buf.Bytes())
+		written, err = fw.WritePacketFrame(buf.Bytes())
 	} else {
-		_, err = w.Write(buf.Bytes())
+		written, err = w.Write(buf.Bytes())
 	}
-	if err != nil {
-		return 0, err
+	if written == buf.Len() {
+		return len(payload), err
 	}
-	return len(payload), nil
+	if err == nil {
+		err = io.ErrShortWrite
+	}
+	return 0, err
 }
 
 type UDPRequest struct {

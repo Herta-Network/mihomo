@@ -41,8 +41,10 @@ func TestInboundSnellBatch(t *testing.T) {
 								target := C.GetWriteBackTarget(C.NewPacketAdapter(p, m))
 								buffer := p.(C.PacketBuffer).TakeBuffer()
 								p.Drop()
-								if err := C.WriteBackBuffer(target, buffer, M.SocksaddrFromNetIP(m.AddrPort())); err != nil {
-									t.Error(err)
+								_, writeErr := target.WriteBack(buffer.Bytes(), m.UDPAddr())
+								buffer.Release()
+								if writeErr != nil {
+									t.Error(writeErr)
 								}
 								return
 							}
@@ -90,14 +92,7 @@ func TestInboundSnellBatch(t *testing.T) {
 						require.NoError(t, err)
 						require.Equal(t, 4, n)
 						for i, want := range payloads {
-							if owned && i%2 == 0 {
-								buffer, source, err := N.ReadPacketBuffer(tracker)
-								require.NoError(t, err)
-								require.Equal(t, dests[i], source)
-								require.True(t, bytes.Equal(want, buffer.Bytes()))
-								buffer.Release()
-								continue
-							}
+
 							got, put, addr, err := tracker.WaitReadFrom()
 							require.NoError(t, err)
 							require.True(t, bytes.Equal(want, got))

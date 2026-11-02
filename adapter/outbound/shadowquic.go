@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/metacubex/mihomo/common/net/packetbatch"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/ca"
 	C "github.com/metacubex/mihomo/constant"
@@ -67,7 +68,10 @@ func (s *ShadowQuic) ListenPacketContext(ctx context.Context, metadata *C.Metada
 	if err != nil {
 		return nil, err
 	}
-	return NewPacketConn(withPacketProgress(pc, s.option.UDPOverStream), s), nil
+	if s.option.UDPOverStream {
+		pc = packetbatch.NewTerminalConn(pc)
+	}
+	return NewPacketConn(pc, s), nil
 }
 
 func (s *ShadowQuic) Close() error {

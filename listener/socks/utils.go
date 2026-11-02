@@ -1,6 +1,7 @@
 package socks
 
 import (
+	"io"
 	"net"
 
 	"github.com/metacubex/mihomo/transport/socks5"
@@ -23,7 +24,15 @@ func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 	if err != nil {
 		return
 	}
-	return c.pc.WriteTo(packet, c.rAddr)
+	// WriteBack reports application bytes, not the framed datagram length.
+	n, err = c.pc.WriteTo(packet, c.rAddr)
+	if n == len(packet) {
+		return len(b), err
+	}
+	if err == nil {
+		err = io.ErrShortWrite
+	}
+	return 0, err
 }
 
 // LocalAddr returns the source IP/Port of UDP Packet

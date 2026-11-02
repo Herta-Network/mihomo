@@ -9,25 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/metacubex/mihomo/constant/features"
+	"github.com/metacubex/sing/common/buf"
+	"github.com/metacubex/sing/common/bufio"
 	"github.com/metacubex/sing/common/network"
 )
-
-func TestRelayReadPolicyBounds(t *testing.T) {
-	for _, test := range []struct {
-		active      int64
-		cpus        int
-		low         bool
-		batch, size int
-	}{
-		{1, 1, false, 4, 0}, {5, 1, false, 1, 16 * 1024},
-		{65, 128, false, 1, 16 * 1024}, {1, 128, true, 1, 16 * 1024},
-	} {
-		got := relayReadOptions(test.active, test.cpus, test.low)
-		if got.BatchSize != test.batch || (test.size != 0 && got.MaxBufferSize != test.size) {
-			t.Fatalf("policy %+v: %+v", test, got)
-		}
-	}
-}
 
 func tcpPair(t *testing.T) (*net.TCPConn, *net.TCPConn) {
 	t.Helper()
@@ -100,8 +86,26 @@ func TestRelayHalfCloseCountersAndProtocolWrapper(t *testing.T) {
 				incoming = xorRelayConn{left}
 			}
 			options := relayCopyOptions(counted, incoming)
-			if (options.ReadPolicy == nil) != (runtime.GOOS == "linux" && !wrapped) {
-				t.Fatal("incorrect splice eligibility")
+			if !features.WithLowMemory && !wrapped {
+				if options.ReadPolicy != nil || options.TransferSize != nil {
+					t.Fatal("normal relay replaced native copy policy")
+				}
+			} else if features.WithLowMemory && runtime.GOOS == "linux" && !wrapped {
+				if options.ReadPolicy != nil || options.TransferSize == nil || options.TransferSize() != 16*1024 {
+					t.Fatal("low-memory splice limit lost")
+				}
+			} else {
+				if options.ReadPolicy == nil {
+					t.Fatal("low-memory read limit lost")
+				}
+				policy := options.ReadPolicy()
+				expectedSize := 32 * 1024
+				if features.WithLowMemory {
+					expectedSize = 16 * 1024
+				}
+				if policy.BatchSize != 1 || policy.MaxBufferSize != expectedSize {
+					t.Fatal("low-memory read policy changed")
+				}
 			}
 			done := make(chan struct{})
 			go func() { Relay(incoming, counted); close(done) }()
@@ -153,5 +157,58 @@ func TestRelayHalfCloseCountersAndProtocolWrapper(t *testing.T) {
 				t.Fatalf("incorrect counters: read=%d written=%d", counted.read.Load(), counted.written.Load())
 			}
 		})
+	}
+}
+
+func TestRelayPreservesCachedHandshakePayload(t *testing.T) {
+	client, left := tcpPair(t)
+	right, server := tcpPair(t)
+	payload := bytes.Repeat([]byte("cached-handshake-payload"), 1000)
+	prefix := buf.NewSize(4096)
+	prefix.Write(payload[:4096])
+	incoming := bufio.NewCachedConn(left, prefix)
+	counted := &countedRelayConn{TCPConn: right}
+	done := make(chan struct{})
+	go func() { Relay(incoming, counted); close(done) }()
+	response := make(chan error, 1)
+	go func() {
+		got, err := io.ReadAll(server)
+		if err == nil && !bytes.Equal(got, payload) {
+			err = io.ErrUnexpectedEOF
+		}
+		if err == nil {
+			_, err = server.Write([]byte("ack"))
+		}
+		server.CloseWrite()
+		response <- err
+	}()
+	if _, err := client.Write(payload[4096:]); err != nil {
+		t.Fatal(err)
+	}
+	client.CloseWrite()
+	got, err := io.ReadAll(client)
+	if err != nil || string(got) != "ack" {
+		t.Fatalf("reply=%q err=%v", got, err)
+	}
+	if err = <-response; err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("cached relay did not close")
+	}
+	if prefix.RawCap() != 0 || counted.written.Load() != int64(len(payload)) || counted.read.Load() != 3 {
+		t.Fatal("cached data ownership or traffic count changed")
+	}
+}
+
+type shortRelayWriter struct{}
+
+func (shortRelayWriter) Write(p []byte) (int, error) { return 1, nil }
+func TestRelayOpaqueWriterShortSuccessIsRejected(t *testing.T) {
+	n, err := relayCopy(shortRelayWriter{}, bytes.NewReader([]byte("payload")))
+	if n != 1 || err != io.ErrShortWrite {
+		t.Fatalf("progress=%d err=%v", n, err)
 	}
 }

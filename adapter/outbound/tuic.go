@@ -107,7 +107,7 @@ func (t *Tuic) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (_
 	if err != nil {
 		return nil, err
 	}
-	return NewPacketConn(withPacketProgress(pc, false), t), nil
+	return NewPacketConn(pc, t), nil
 }
 
 func (t *Tuic) dial(ctx context.Context) (quicConn *quic.Conn, err error) {

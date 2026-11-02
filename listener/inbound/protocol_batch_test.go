@@ -3,6 +3,7 @@ package inbound_test
 import (
 	"bytes"
 	"context"
+	"io"
 	"net"
 	"net/netip"
 	"strconv"
@@ -164,7 +165,24 @@ func TestProtocolPacketBatchIntegration(t *testing.T) {
 			defer tracker.Close()
 			require.NoError(t, tracker.SetReadDeadline(time.Now().Add(10*time.Second)))
 			writer, ok := N.CreatePacketBatchWriterWithCount(tracker)
-			require.True(t, ok, "capability missing through production wrappers")
+			nativeBatch := name != "hysteria2" && !strings.HasPrefix(name, "tuic-")
+			require.Equal(t, nativeBatch, ok, "advertised capability must match the protocol")
+			writePackets := func(buffers []*buf.Buffer, destinations []M.Socksaddr) (int, error) {
+				if ok {
+					return writer.WritePacketBatchCount(buffers, destinations)
+				}
+				defer buf.ReleaseMulti(buffers)
+				for i, b := range buffers {
+					n, err := tracker.WriteTo(b.Bytes(), destinations[i].UDPAddr())
+					if err != nil {
+						return i, err
+					}
+					if n != b.Len() {
+						return i, io.ErrShortWrite
+					}
+				}
+				return len(buffers), nil
+			}
 			bound := (strings.HasPrefix(name, "vless") || strings.HasPrefix(name, "vmess")) && !strings.Contains(name, "xudp") && !strings.Contains(name, "packetaddr")
 			payloads := [][]byte{nil, []byte("one"), bytes.Repeat([]byte{0x5a}, 60000), []byte("last")}
 			// Darwin defaults to a small raw UDP send buffer; stream carriers test 60 KB.
@@ -175,7 +193,7 @@ func TestProtocolPacketBatchIntegration(t *testing.T) {
 				payloads[2] = bytes.Repeat([]byte{0x5a}, 1200)
 			}
 			if name == "vmess-none" {
-				n, err := writer.WritePacketBatchCount([]*buf.Buffer{buf.NewSize(1)}, []M.Socksaddr{M.SocksaddrFromNet(metadata.UDPAddr())})
+				n, err := writePackets([]*buf.Buffer{buf.NewSize(1)}, []M.Socksaddr{M.SocksaddrFromNet(metadata.UDPAddr())})
 				require.Error(t, err)
 				require.Zero(t, n)
 				payloads[0] = []byte("nonempty")
@@ -191,7 +209,7 @@ func TestProtocolPacketBatchIntegration(t *testing.T) {
 				}
 				total += int64(len(payload))
 			}
-			n, err := writer.WritePacketBatchCount(buffers, destinations)
+			n, err := writePackets(buffers, destinations)
 			require.NoError(t, err)
 			require.Equal(t, len(payloads), n)
 			seen := make([]bool, len(payloads))
@@ -228,7 +246,7 @@ func TestProtocolPacketBatchIntegration(t *testing.T) {
 				done := make(chan error, 1)
 				go func() {
 					for i := 0; i < 128; i++ {
-						_, writeErr := writer.WritePacketBatchCount([]*buf.Buffer{buf.As([]byte("close-check")), buf.As([]byte("second"))}, []M.Socksaddr{destinations[0], destinations[0]})
+						_, writeErr := writePackets([]*buf.Buffer{buf.As([]byte("close-check")), buf.As([]byte("second"))}, []M.Socksaddr{destinations[0], destinations[0]})
 						if i == 0 {
 							close(started)
 						}

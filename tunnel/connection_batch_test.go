@@ -195,7 +195,7 @@ func TestPacketSenderSendCloseRaceDropsExactlyOnce(t *testing.T) {
 			t.Fatalf("packet %d drops=%d", i, packets[i].drops.Load())
 		}
 	}
-	if s.queue.Len() != 0 {
+	if len(s.queue) != 0 {
 		t.Fatal("enqueue survived close drain")
 	}
 }

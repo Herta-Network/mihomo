@@ -20,7 +20,7 @@ type downlinkBenchmarkConn struct {
 	left   int
 }
 
-func (c *downlinkBenchmarkConn) ReadPacketBuffer() (*buf.Buffer, M.Socksaddr, error) {
+func (c *downlinkBenchmarkConn) nextPacket() (*buf.Buffer, M.Socksaddr, error) {
 	if c.left == 0 {
 		return nil, M.Socksaddr{}, io.EOF
 	}
@@ -29,7 +29,7 @@ func (c *downlinkBenchmarkConn) ReadPacketBuffer() (*buf.Buffer, M.Socksaddr, er
 	return c.buffer, c.source, nil
 }
 func (c *downlinkBenchmarkConn) WaitReadFrom() ([]byte, func(), net.Addr, error) {
-	buffer, source, err := c.ReadPacketBuffer()
+	buffer, source, err := c.nextPacket()
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -42,16 +42,11 @@ func (r *downlinkBenchmarkReply) WriteBack(b []byte, _ net.Addr) (int, error) {
 	r.calls++
 	return len(b), nil
 }
-func (r *downlinkBenchmarkReply) WriteBackBuffer(buffer *buf.Buffer, _ M.Socksaddr) error {
-	r.calls++
-	buffer.Release()
-	return nil
-}
 
 // This stage includes the actual downstream loop, traffic tracker, NAT mapping
 // and reply proxy. The reader supplies an already-owned buffer; no socket I/O,
 // ingress allocation or protocol encoding is included. One operation is a packet.
-func BenchmarkPacketOwnedDownlink(b *testing.B) {
+func BenchmarkPacketDownlink(b *testing.B) {
 	metadata := &C.Metadata{DstIP: netip.MustParseAddr("198.18.0.1"), DstPort: 53}
 	target := netip.MustParseAddr("127.0.0.2")
 	sender := newPacketSender().(*packetSender)

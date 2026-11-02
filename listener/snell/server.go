@@ -462,12 +462,6 @@ func (r *udpReply) WriteBack(b []byte, addr net.Addr) (int, error) {
 	return snell.WritePacketResponse(r.conn, addr, b)
 }
 
-func (r *udpReply) WriteBackBuffer(buffer *buf.Buffer, destination M.Socksaddr) error {
-	r.writeMu.Lock()
-	defer r.writeMu.Unlock()
-	return r.conn.WritePacketResponseBuffer(buffer, destination)
-}
-
 func (p *udpPacket) Drop() {
 	p.buffer.Release()
 	p.buffer = nil

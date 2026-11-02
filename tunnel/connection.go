@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/deque"
 	N "github.com/metacubex/mihomo/common/net"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/features"
@@ -22,8 +21,7 @@ import (
 type packetSender struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
-	ready     chan struct{}
-	queue     deque.Deque[C.PacketAdapter]
+	queue     chan C.PacketAdapter
 	sendMutex sync.Mutex
 
 	// destination NAT mapping
@@ -56,13 +54,11 @@ func newPacketSender() C.PacketSender {
 	s := &packetSender{
 		ctx:    ctx,
 		cancel: cancel,
-		ready:  make(chan struct{}, 1),
+		queue:  make(chan C.PacketAdapter, senderCapacity),
 
 		originToTarget: make(map[packetDestination]netip.Addr),
 		targetToOrigin: make(map[netip.Addr]netip.Addr),
 	}
-	s.queue.SetBaseCap(senderCapacity)
-	s.queue.Grow(senderCapacity)
 	return s
 }
 
@@ -161,12 +157,10 @@ func (s *packetSender) Process(pc C.PacketConn, proxy C.WriteBackProxy) {
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-s.ready:
+		case first := <-s.queue:
 			var packets [packetSendBatchSize]C.PacketAdapter
-			count := s.takePackets(packets[:batchSize])
-			if count == 0 {
-				continue
-			}
+			packets[0] = first
+			count := 1 + s.takePackets(packets[1:batchSize])
 			if s.ctx.Err() != nil {
 				for _, packet := range packets[:count] {
 					packet.Drop()
@@ -267,37 +261,29 @@ func (s *packetSender) dropAll() {
 	}
 }
 
-// takePackets transfers ownership in FIFO order under one admission lock. A
-// single wakeup represents all queued packets; rearm it only if work remains.
+// takePackets drains immediately available packets without waiting for a full batch.
 func (s *packetSender) takePackets(packets []C.PacketAdapter) int {
-	s.sendMutex.Lock()
-	defer s.sendMutex.Unlock()
-	n := min(len(packets), s.queue.Len())
-	for i := 0; i < n; i++ {
-		packets[i] = s.queue.PopFront()
-	}
-	if s.queue.Len() > 0 {
-		s.notify()
+	n := 0
+	for n < len(packets) {
+		select {
+		case p := <-s.queue:
+			packets[n] = p
+			n++
+		default:
+			return n
+		}
 	}
 	return n
 }
-
-func (s *packetSender) notify() {
-	select {
-	case s.ready <- struct{}{}:
-	default:
-	}
-}
-
 func (s *packetSender) Send(packet C.PacketAdapter) {
 	s.sendMutex.Lock()
-	if s.ctx.Err() == nil && s.queue.Len() < senderCapacity {
-		s.queue.PushBack(packet)
-		if s.queue.Len() == 1 {
-			s.notify()
+	if s.ctx.Err() == nil {
+		select {
+		case s.queue <- packet:
+			s.sendMutex.Unlock()
+			return
+		default:
 		}
-		s.sendMutex.Unlock()
-		return
 	}
 	s.sendMutex.Unlock()
 	packet.Drop()
@@ -335,22 +321,35 @@ func handleUDPToLocal(writeBack C.WriteBack, pc C.PacketConn, sender C.PacketSen
 		closeAllLocalCoon(key)
 		natTable.Delete(key)
 	}()
-
 	for {
 		_ = pc.SetReadDeadline(time.Now().Add(udpTimeout))
-		buffer, from, err := N.ReadPacketBuffer(pc)
+		data, put, addr, err := pc.WaitReadFrom()
 		if err != nil {
+			if put != nil {
+				put()
+			}
 			return
+		}
+		var from M.Socksaddr
+		if udp, ok := addr.(*net.UDPAddr); ok {
+			if udp != nil {
+				from = M.SocksaddrFromNetIP(udp.AddrPort())
+			}
+		} else {
+			from = M.SocksaddrFromNet(addr)
 		}
 		if !from.IsIP() {
 			log.Warnln("server returned an invalid UDP source (%s), force replace to (%s)", from, oAddrPort)
 			from = M.SocksaddrFromNetIP(oAddrPort)
 		}
-		// restore DestinationNAT
 		from.Addr = sender.RestoreReadFrom(from.Addr.Unmap()).Unmap()
 		from.Fqdn = ""
-		err = C.WriteBackBuffer(writeBack, buffer, from)
-		if err != nil {
+		size := len(data)
+		n, err := writeBack.WriteBack(data, from.UDPAddr())
+		if put != nil {
+			put()
+		}
+		if err != nil || n != size {
 			return
 		}
 	}

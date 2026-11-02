@@ -108,7 +108,7 @@ func (h *Hysteria2) ListenPacketContext(ctx context.Context, metadata *C.Metadat
 	if pc == nil {
 		return nil, errors.New("packetConn is nil")
 	}
-	return NewPacketConn(N.NewThreadSafePacketConn(withPacketProgress(pc, false)), h), nil
+	return NewPacketConn(N.NewThreadSafePacketConn(pc), h), nil
 }
 
 // Close implements C.ProxyAdapter

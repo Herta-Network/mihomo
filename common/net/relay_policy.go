@@ -3,54 +3,38 @@ package net
 import (
 	"io"
 	"runtime"
-	"sync/atomic"
 	"syscall"
 
-	"github.com/metacubex/mihomo/common/pool"
 	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/sing/common/bufio"
 	"github.com/metacubex/sing/common/network"
 )
 
-var activeRelayCopies atomic.Int64
-
-func relayReadOptions(active int64, parallelism int, lowMemory bool) bufio.CopyReadOptions {
-	options := bufio.CopyReadOptions{BatchSize: 1, MaxBufferSize: pool.RelayBufferSize}
-	if lowMemory {
-		options.MaxBufferSize = 16 * 1024
-		return options
-	}
-	// Bound aggregate read-ahead as concurrent relay directions increase.
-	threshold := max(4, min(64, parallelism*4))
-	if active <= int64(threshold) {
-		options.BatchSize = 4
-	} else {
-		options.MaxBufferSize = 16 * 1024
-	}
-	return options
-}
-
 func relayCopyOptions(destination io.Writer, source io.Reader) bufio.CopyOptions {
-	policy := func() bufio.CopyReadOptions {
-		return relayReadOptions(activeRelayCopies.Load(), runtime.GOMAXPROCS(0), features.WithLowMemory)
-	}
-	// A read policy intentionally disables sing's splice path. Preserve it for
-	// replaceable raw socket pairs, including counter wrappers.
+	// Keep native socket copy paths. For opaque protocol wrappers, keep the
+	// checked copy engine but avoid vector read-ahead and concurrency-driven
+	// buffer shrinking. Only low-memory builds request the smaller cap.
 	reader, _ := network.UnwrapCountReader(source, nil)
 	writer, _ := network.UnwrapCountWriter(destination, nil)
 	_, rawReader := reader.(syscall.Conn)
 	_, rawWriter := writer.(syscall.Conn)
-	if runtime.GOOS == "linux" && rawReader && rawWriter {
-		return bufio.CopyOptions{TransferSize: func() int {
-			options := policy()
-			return options.MaxBufferSize * options.BatchSize
-		}}
+	if rawReader && rawWriter {
+		if !features.WithLowMemory {
+			return bufio.CopyOptions{}
+		}
+		if runtime.GOOS == "linux" {
+			return bufio.CopyOptions{TransferSize: func() int { return 16 * 1024 }}
+		}
 	}
-	return bufio.CopyOptions{ReadPolicy: policy}
+	size := 32 * 1024
+	if features.WithLowMemory {
+		size = 16 * 1024
+	}
+	return bufio.CopyOptions{ReadPolicy: func() bufio.CopyReadOptions {
+		return bufio.CopyReadOptions{BatchSize: 1, MaxBufferSize: size}
+	}}
 }
 
 func relayCopy(destination io.Writer, source io.Reader) (int64, error) {
-	activeRelayCopies.Add(1)
-	defer activeRelayCopies.Add(-1)
 	return bufio.CopyWithOptions(destination, source, relayCopyOptions(destination, source))
 }

@@ -104,7 +104,15 @@ func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 	if err != nil {
 		return
 	}
-	return c.pc.WriteTo(packet, c.addr)
+	// WriteBack reports application bytes, not the framed datagram length.
+	n, err = c.pc.WriteTo(packet, c.addr)
+	if n == len(packet) {
+		return len(b), err
+	}
+	if err == nil {
+		err = io.ErrShortWrite
+	}
+	return 0, err
 }
 
 func (c *packet) Drop() {

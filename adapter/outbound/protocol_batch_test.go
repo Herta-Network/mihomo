@@ -183,7 +183,7 @@ func (*nativeDeadlinePacket) Close() error                                 { ret
 func TestProtocolPacketProgressPreservesStackDeadline(t *testing.T) {
 	raw := &nativeDeadlinePacket{}
 	out := NewDirect()
-	conn := NewPacketConn(withPacketProgress(raw, false), out)
+	conn := NewPacketConn(raw, out)
 	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}

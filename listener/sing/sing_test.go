@@ -55,11 +55,9 @@ func (t *packetTestTunnel) HandleUDPPacket(p C.UDPPacket, _ *C.Metadata) {
 	go func() {
 		var err error
 		if t.owned {
-			buffer := buf.NewSize(32)
-			buffer.WriteString("response")
-			err = C.WriteBackBuffer(C.GetWriteBackTarget(p), buffer, M.ParseSocksaddr("127.0.0.1:53"))
+			_, err = C.GetWriteBackTarget(p).WriteBack([]byte("response"), M.ParseSocksaddr("127.0.0.1:53"))
 		} else {
-			_, err = p.WriteBack([]byte("response"), &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 53})
+			_, err = p.WriteBack([]byte("response"), M.ParseSocksaddr("127.0.0.1:53"))
 		}
 		p.Drop()
 		t.written <- err
@@ -70,7 +68,7 @@ func TestPacketConnectionCloseUnblocksWriteBack(t *testing.T) {
 	testPacketConnectionCloseUnblocksWriteBack(t, false)
 }
 
-func TestPacketOwnedConnectionCloseUnblocksWriteBack(t *testing.T) {
+func TestPacketDetachedConnectionCloseUnblocksWriteBack(t *testing.T) {
 	testPacketConnectionCloseUnblocksWriteBack(t, true)
 }
 
@@ -105,28 +103,12 @@ func testPacketConnectionCloseUnblocksWriteBack(t *testing.T, owned bool) {
 	}
 }
 
-type ownedReplyPacketWriter struct {
-	want *buf.Buffer
-	t    *testing.T
-}
+type failedReplyWriter struct{ network.NetPacketWriter }
 
-func (*ownedReplyPacketWriter) FrontHeadroom() int { return 16 }
-func (*ownedReplyPacketWriter) RearHeadroom() int  { return 8 }
-func (w *ownedReplyPacketWriter) WritePacket(buffer *buf.Buffer, destination M.Socksaddr) error {
-	defer buffer.Release()
-	if buffer != w.want || buffer.Start() != 32 || destination != M.ParseSocksaddr("127.0.0.2:5353") {
-		w.t.Fatal("owned reply identity/address changed")
-	}
-	buffer.ExtendHeader(16)
-	buffer.Extend(8)
-	return io.ErrClosedPipe
-}
-
-func TestPacketReplyOwnedLifetimeAndFailure(t *testing.T) {
+func (*failedReplyWriter) WriteTo([]byte, net.Addr) (int, error) { return 0, io.ErrClosedPipe }
+func TestPacketReplyLifetimeAndFailure(t *testing.T) {
 	for _, closed := range []bool{false, true} {
-		response := buf.NewSize(128)
-		response.Resize(32, 5)
-		reply := &packetReply{packetWriter: &ownedReplyPacketWriter{want: response, t: t}}
+		reply := &packetReply{writer: &failedReplyWriter{}}
 		p := &packet{reply: reply, buff: buf.NewSize(64), rAddr: &net.UDPAddr{}}
 		target := C.GetWriteBackTarget(C.NewPacketAdapter(p, &C.Metadata{}))
 		if target != reply {
@@ -136,13 +118,13 @@ func TestPacketReplyOwnedLifetimeAndFailure(t *testing.T) {
 		if closed {
 			reply.close()
 		}
-		err := C.WriteBackBuffer(target, response, M.ParseSocksaddr("127.0.0.2:5353"))
+		_, err := target.WriteBack([]byte("reply"), M.ParseSocksaddr("127.0.0.2:5353"))
 		want := io.ErrClosedPipe
 		if closed {
 			want = net.ErrClosed
 		}
-		if !errors.Is(err, want) || response.RawCap() != 0 {
-			t.Fatalf("err=%v retained=%d", err, response.RawCap())
+		if !errors.Is(err, want) {
+			t.Fatal(err)
 		}
 	}
 }

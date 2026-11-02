@@ -13,7 +13,6 @@ import (
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/sing/common/buf"
-	M "github.com/metacubex/sing/common/metadata"
 )
 
 // Adapter Type
@@ -346,6 +345,7 @@ func NewPacketAdapter(packet UDPPacket, metadata *Metadata) PacketAdapter {
 	}
 }
 
+// WriteBack reports application payload bytes, excluding protocol framing.
 type WriteBack interface {
 	WriteBack(b []byte, addr net.Addr) (n int, err error)
 }
@@ -368,12 +368,6 @@ func GetWriteBackTarget(wb WriteBack) WriteBack {
 		return source.WriteBackTarget()
 	}
 	return wb
-}
-
-// BufferWriteBack consumes the buffer on success and failure. It must preserve
-// the reply endpoint's serialization and any protocol/traffic wrappers.
-type BufferWriteBack interface {
-	WriteBackBuffer(buffer *buf.Buffer, destination M.Socksaddr) error
 }
 
 type WriteBackProxy interface {

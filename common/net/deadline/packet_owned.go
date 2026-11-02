@@ -2,9 +2,7 @@ package deadline
 
 import (
 	"net"
-	"os"
 
-	"github.com/metacubex/mihomo/common/net/packet"
 	"github.com/metacubex/sing/common/buf"
 	M "github.com/metacubex/sing/common/metadata"
 )
@@ -72,49 +70,4 @@ func packetResultData(result any) (data []byte, put func(), addr net.Addr, err e
 		}
 		return buffer.Bytes(), buffer.Release, addr, nil
 	}
-}
-
-func (c *enhancePacketConn) ReadPacketBuffer() (*buf.Buffer, M.Socksaddr, error) {
-	c.netPacketConn.readMutex.Lock()
-	defer c.netPacketConn.readMutex.Unlock()
-	return c.readPacketBuffer()
-}
-
-func (c *enhancePacketConn) readPacketBuffer() (*buf.Buffer, M.Socksaddr, error) {
-	owner := c.netPacketConn
-	if owner.isClosed() {
-		return nil, M.Socksaddr{}, net.ErrClosed
-	}
-	select {
-	case result := <-owner.resultCh:
-		if result != nil {
-			buffer, destination, err := packetResultBuffer(result)
-			owner.publishResult(nil)
-			return buffer, destination, err
-		}
-		owner.publishResult(nil)
-	case <-owner.done:
-		return nil, M.Socksaddr{}, net.ErrClosed
-	case <-owner.pipeDeadline.Wait():
-		return nil, M.Socksaddr{}, os.ErrDeadlineExceeded
-	}
-	if owner.disablePipe.Load() {
-		return packet.ReadPacketBuffer(c.enhancePacketConn)
-	} else if !owner.deadlineSet.Load() {
-		owner.inRead.Store(true)
-		defer owner.inRead.Store(false)
-		return packet.ReadPacketBuffer(c.enhancePacketConn)
-	}
-	select {
-	case <-owner.done:
-		return nil, M.Socksaddr{}, net.ErrClosed
-	case <-owner.resultCh:
-	}
-	go c.pipeReadPacketBuffer()
-	return c.readPacketBuffer()
-}
-
-func (c *enhancePacketConn) pipeReadPacketBuffer() {
-	buffer, destination, err := packet.ReadPacketBuffer(c.enhancePacketConn)
-	c.netPacketConn.publishResult(&singWaitReadResult{buffer: buffer, destination: destination, err: err})
 }

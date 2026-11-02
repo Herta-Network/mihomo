@@ -10,18 +10,6 @@ import (
 	N "github.com/metacubex/sing/common/network"
 )
 
-func (ut *udpTracker) ReadPacketBuffer() (*buf.Buffer, M.Socksaddr, error) {
-	buffer, destination, err := packet.ReadPacketBuffer(ut.PacketConn)
-	if err == nil {
-		download := int64(buffer.Len())
-		if ut.pushToManager {
-			ut.manager.PushDownloaded(download)
-		}
-		ut.DownloadTotal.Add(download)
-	}
-	return buffer, destination, err
-}
-
 func (ut *udpTracker) CreatePacketBatchWriterWithCount() (N.PacketBatchWriterWithCount, bool) {
 	writer, ok := packet.CreatePacketBatchWriterWithCount(ut.PacketConn)
 	if !ok {

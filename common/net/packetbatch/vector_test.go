@@ -55,7 +55,7 @@ func TestPacketVectorWriterFallbackProgress(t *testing.T) {
 	}
 }
 
-func TestPacketVectorWriterNativeReuse(t *testing.T) {
+func TestPacketVectorWriterNativeProgressAndRelease(t *testing.T) {
 	listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatal(err)
@@ -89,11 +89,6 @@ func TestPacketVectorWriterNativeReuse(t *testing.T) {
 		if _, err = io.ReadFull(server, got); err != nil || !bytes.Equal(got, want) {
 			t.Fatalf("stream=%v err=%v", got, err)
 		}
-		for _, data := range writer.storage {
-			if data != nil {
-				t.Fatal("native vectors retained a consumed payload")
-			}
-		}
 		for _, buffer := range buffers {
 			if buffer.RawCap() != 0 {
 				t.Fatal("native write retained owned buffer")
@@ -105,11 +100,6 @@ func TestPacketVectorWriterNativeReuse(t *testing.T) {
 	buffer.WriteByte(1)
 	if _, err := writer.WriteVectorisedCount([]*buf.Buffer{buffer}); err == nil || buffer.RawCap() != 0 {
 		t.Fatal("closed socket retained input or succeeded")
-	}
-	for _, data := range writer.storage {
-		if data != nil {
-			t.Fatal("failed native write retained payload")
-		}
 	}
 	// A protocol may replace its carrier while retaining the connection state.
 	// Reset must stop using the previous (now closed) native socket.

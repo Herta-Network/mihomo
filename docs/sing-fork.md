@@ -1,41 +1,46 @@
 # sing fork integration
 
 `github.com/metacubex/sing` is replaced with the fixed Herta-Network revision
-`1260cbaedd252f9abb8d23576c862f64f50c0c98` in `go.mod`. This also selects the fork
+`d9b3220a312b269d4b2bf435fccb8bd232364ffb` in `go.mod`. This also selects the fork
 for MetaCubeX protocol dependencies that import that module path. The cronet-go, sing-snell, sing-vmess, sing-mux, smux and sing-quic forks use this
 same module path. Their public
 package paths remain unchanged, but their sources are selected with fixed fork
 replacements. There is no separate `github.com/sagernet/sing` in the production
 module graph, including `with_naive` builds.
-No local checkout or moving branch is needed to build mihomo.
+No local checkout or moving branch is needed to build the pinned dependency graph.
+The [mechanism review](benchmarks/mechanism-review-2026-11-01.md) documents
+the retained fixes, measured tradeoffs and removed complexity. The fixed
+versions below include those published simplifications; ordinary builds no
+longer need the development workspace used during measurement.
 
 | Module identity | Fixed source commit |
 | --- | --- |
-| `github.com/metacubex/sing` | Herta-Network/sing `1260cbaedd25` |
+| `github.com/metacubex/sing` | Herta-Network/sing `d9b3220a312b` |
 | `github.com/sagernet/cronet-go` | Herta-Network/cronet-go `511fbbf40a07` |
-| `github.com/sagernet/sing-snell` | Herta-Network/sing-snell `1fa24ee9ea84` |
+| `github.com/sagernet/sing-snell` | Herta-Network/sing-snell `75ebe9d28505` |
 | `github.com/metacubex/sing-vmess` | Herta-Network/sing-vmess `7cef310d10c4` |
-| `github.com/metacubex/sing-mux` | Herta-Network/sing-mux `d06b28e91440` |
-| `github.com/metacubex/smux` | Herta-Network/smux `10aa72a7535c` |
-| `github.com/metacubex/sing-quic` | Herta-Network/sing-quic `9d7d4312a27b` |
+| `github.com/metacubex/sing-mux` | Herta-Network/sing-mux `aacdbf4dd064` |
+| `github.com/metacubex/smux` | Herta-Network/smux `175a5e6183d0` |
+| `github.com/metacubex/sing-quic` | Herta-Network/sing-quic `6fa503843736` |
 
 ## Data paths
 
-TCP Relay uses `CopyWithOptions`. Its read policy requests buffers up to 32 KiB and
-batches to four buffers at low concurrency. Above four active directions per
-Go scheduler processor (threshold clamped to 4–64), it uses one 16 KiB buffer.
-`with_low_memory` builds always request one 16 KiB buffer. Required protocol headroom
-can exceed these requested caps. The sing copy engine still
-owns protocol framing, handshake reporting, cached bytes and counter callbacks.
-Raw socket pairs on Linux retain splice and use the same policy to bound each
-transfer size; setting a buffered read policy there would disable splice.
+TCP relay uses `CopyWithOptions` and preserves the native copy path for
+replaceable raw socket pairs, including counter wrappers. Normal protocol
+wrappers use checked single-buffer reads up to 32 KiB. Concurrency does not
+shrink that buffer or enable speculative vector read-ahead: full-process tests
+showed throughput regression from the former adaptive 16 KiB/four-buffer policy.
+`with_low_memory` still requests one 16 KiB buffer. Required protocol headroom
+can exceed the requested cap. Linux raw socket pairs retain splice, with its
+native transfer cap in normal builds and a 16 KiB cap in low-memory builds.
+The copy engine continues to own protocol framing, cached bytes, handshake
+reporting and traffic counters.
 
 UDP socket reads, sing packet connections and the sing Shadowsocks listener use
-`PacketBatchReadWaiter` / `ConnectedPacketBatchReadWaiter` when available. Reads
-request at most four packets; `with_low_memory` uses scalar reads. Readers preserve
-an advertised MTU or allow a full UDP datagram when no MTU is supplied. This
-bounds prefetch, but is not a measured reduction in memory use or a throughput
-claim. Unsupported platforms and protocol wrappers keep their scalar read path.
+bounded four-packet read batches when the source provides a batch waiter.
+Complete-chain ablation found about 7% lower CPU on the smux burst workload;
+the same benefit was not established for every protocol. Low-memory builds keep
+scalar reads. An advertised MTU or full UDP datagram capacity is preserved.
 
 One reader owns pending packets across `ReadFrom`, `ReadPacket` and
 `WaitReadFrom`. A packet handed to the tunnel remains owned by its consumer;
@@ -49,8 +54,9 @@ an in-flight reply writer.
 the handshake-prefetched packet. It serves that packet first, including empty
 datagrams, then hands through the underlying owned buffers. Scalar/cached/waiter
 reads share state, and teardown interrupts reads before releasing waiter storage.
-The shared counted vector writer retains its descriptors across writes; joined
-fallbacks use pooled bytes without a temporary `Buffer` object.
+The reviewed counted vector writer uses local descriptors, retaining exact
+partial-write counts without a shared descriptor cache or additional mutex.
+Joined fallbacks use pooled bytes without a temporary `Buffer` object.
 
 ## Boundaries
 
@@ -65,17 +71,18 @@ owned packets also use counted writes, including in `with_low_memory` builds,
 without collecting additional packets. Borrowed isolated packets and wrappers
 without an explicit progress capability retain their scalar write path.
 Pending packets are flushed before resolving a new destination.
-The per-connection sender uses a bounded 128-slot deque ring and coalesces worker
-wakeups. FIFO order, full-queue drops and Close/Send ownership remain unchanged.
-Deadline refreshes reuse their timer; closing the owner prevents timer rearming.
+The per-connection sender uses a bounded 128-slot channel. FIFO order,
+full-queue drops and Close/Send ownership are unchanged. Deadline refreshes
+stop and drain the old timer before creating a new one; closing the owner
+prevents rearming. The deque/wakeup layer and retained-timer state were removed.
 
-Downstream `ReadPacketBuffer` explicitly crosses the packet, deadline, reference,
-outbound and traffic wrappers. It preserves cached packets, counts plaintext
-download once, restores NAT source addresses as values and transfers buffers to
-`WriteBackBuffer`. Sing and legacy Snell reply endpoints retain usable headroom;
-legacy readers/writers keep their own API with controlled copy/release fallback.
-Deadline result types are interchangeable after timeout, and read admission is
-serialized across APIs to avoid stealing a cached result.
+The downstream loop uses `WaitReadFrom`/`WriteBack` and releases borrowed data
+after each write, including errors and short success. It counts plaintext
+download once and restores NAT source addresses before replying. The extra
+owned-buffer forwarding interfaces and their reply wrappers were removed.
+Deadline result types remain
+interchangeable after timeout, and read admission is serialized across APIs to
+avoid stealing a cached result.
 
 The NAT reply proxy stores a durable reply endpoint and optional default-source
 value, independently of the packet adapter and metadata. Flow setup snapshots
@@ -90,7 +97,9 @@ write fails. The tracker snapshots plaintext payload sizes before ownership
 transfer and counts only that successful prefix. Empty datagrams advance the
 packet count and refresh the timeout even though their byte count is zero.
 All buffers are consumed on success and failure; failed batches are not
-replayed. Send/Close synchronization prevents enqueueing after the final drain.
+replayed. `WriteBack` reports application payload bytes, excluding protocol
+headers. SOCKS5, legacy Shadowsocks and Mieru normalize complete framed writes
+to that payload count so a successfully sent reply does not close its NAT flow. Send/Close synchronization prevents enqueueing after the final drain.
 
 Native UDP uses the kernel's packet progress and requires a datagram socket;
 TCP sockets are never advertised as native packet batch writers. UoT uses a counted vector writer,
@@ -110,16 +119,22 @@ closing interrupts blocked writes. Counts describe local write completion, not
 peer delivery. Payload validation leaves the nonce unchanged when no record was
 sent.
 
-The Snell fork reuses address and record-header workspaces, packet encoders,
-counted sinks and scalar-call descriptor arrays. Packet encryption reuses the
-consumed descriptor slice, and padding scratch uses pooled bytes. These changes
-preserve the original nonce, record-window, shaping and partial-write rules.
+The reviewed Snell packet writer creates local address storage, counted sinks
+and record encoders for each operation. It no longer caches these adapters or
+single-packet descriptor arrays in the connection. Packet encryption still
+preserves nonce, record-window, shaping and partial-write rules.
 
 ## Protocol capability coverage
 
-Every UDP transport adapter now exposes a counted capability or preserves the
-capability of its chosen backend. The operation differs by transport; exposing
-packet progress does not imply a kernel batch or a throughput improvement.
+Adapters expose a counted capability when their protocol or backend implements
+it. Other transports retain scalar writes; no generic wrapper advertises a
+sequential loop as a new batch capability. Exact progress does not imply a
+kernel batch or a throughput improvement.
+
+ShadowQUIC UDP-over-stream and VLESS Reverse retain a scalar terminal-error
+guard: a failed or incomplete datagram closes the stream and rejects later
+writes. It preserves the original read waiter and does not advertise batching;
+Close can interrupt a blocked write without taking the writer mutex.
 
 | Adapters | Send operation |
 | --- | --- |
@@ -129,8 +144,8 @@ packet progress does not imply a kernel batch or a throughput improvement.
 | Trojan, VLESS, VMess, XUDP, packetaddr, Gost Relay, Sudoku, TrustTunnel, Mieru | Encode complete logical datagrams and join stream writes. Progress includes lazy headers and excludes any incomplete packet. Mieru retains its SDK packet-over-stream framing. |
 | sing-mux bound and full-cone UDP | Native framed batches over h2mux/smux/yamux; both client and server expose progress. |
 | Shadowsocks UoT, AnyTLS, Naive UoT, TUIC UoT | Preserve the existing counted UoT path. |
-| Hysteria, Hysteria2, TUIC native/QUIC packet modes, ShadowQUIC, VLESS Reverse | Count successful calls through the original protocol engine. QUIC fragmentation, channel ownership and routing remain in that engine; this is sequential packet submission, not a raw-socket shortcut. |
-| WireGuard, Tailscale, EasyTier, MASQUE, OpenVPN, ZeroTier | Count the existing network stack's packet operations. ZeroTier's destination/stack validation runs for every packet. |
+| Hysteria, Hysteria2, TUIC native/QUIC packet modes, ShadowQUIC, VLESS Reverse | Use the original scalar protocol API unless the backend already provides counted writes. Fragmentation, channel ownership, routing and errors remain in that engine. |
+| WireGuard, Tailscale, EasyTier, MASQUE, OpenVPN, ZeroTier | Use the existing network stack's scalar packet operations and native deadlines. ZeroTier's destination/stack validation runs for every packet. |
 
 DNS hijacking, rejection and rematch adapters are special local actions, not
 network transports. Unknown wrappers still require an explicit capability;
@@ -182,8 +197,8 @@ Batches without sufficient headroom retain separate header/payload vectors so
 an opaque joined writer copies each payload once. Scalar writes use the counted
 writer and retain partial-frame poisoning and complete-prefix accounting.
 
-Sing-mux caches its counted writer and single-packet workspace under its write
-mutex. Address serialization writes directly into header storage. VMess's length
+Sing-mux uses local counted writers and single-packet descriptors under its
+existing write mutex. Address serialization writes directly into header storage. VMess's length
 masking reuses its two-byte scratch; XUDP and packetaddr avoid temporary header
 descriptors, and the CFB checksum layer preserves the owned `WriteBuffer` path.
 Rejected packets release their input. Packetaddr's borrowed API reports payload
@@ -200,12 +215,14 @@ separate lifecycle fixes and their regression coverage.
 
 XUDP transfers received datagrams through bounded owned queues and encodes
 reply headers in place. Sing-mux shares packet framing state across scalar and
-owned reads; smux reuses scheduler nodes, receive descriptors and socket write
-vectors. Large `ChunkWriter` inputs retain ownership through independent chunks
+owned reads. The reviewed smux uses its standard heap/list scheduler and local
+socket vectors; it still clears consumed receive descriptors so payloads are
+not retained. Large `ChunkWriter` inputs retain ownership through independent chunks
 and reuse the original buffer for the final chunk. Public buffer descriptors
 remain unpooled to preserve their reference and release contracts.
 
-Hysteria2 reuses its fragment wire workspace. TUIC native datagrams use checked
+The reviewed Hysteria2 serializer uses one local pooled fragment buffer, without
+a session-owned scratch buffer or an extra write mutex. TUIC native datagrams use checked
 byte parsing, exact-sized reassembly and association-scoped fragment IDs.
 The [receive/native packet report](benchmarks/protocol-receive-native-2026-11-01.md)
 records allocation changes, p95/p99 observations, failed baseline trials and the

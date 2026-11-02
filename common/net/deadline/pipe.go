@@ -11,11 +11,10 @@ import (
 
 // PipeDeadline is an abstraction for handling timeouts.
 type PipeDeadline struct {
-	mu          sync.Mutex // Guards timer, its active state, and cancel
-	timer       *time.Timer
-	timerActive bool
-	stopped     bool
-	cancel      chan struct{} // Must be non-nil
+	mu      sync.Mutex // Guards timer, its active state, and cancel
+	timer   *time.Timer
+	stopped bool
+	cancel  chan struct{} // Must be non-nil
 }
 
 func MakePipeDeadline() PipeDeadline {
@@ -51,12 +50,7 @@ func (d *PipeDeadline) Set(t time.Time) {
 		if closed {
 			d.cancel = make(chan struct{})
 		}
-		if d.timer == nil {
-			d.timer = time.AfterFunc(dur, func() { close(d.cancel) })
-		} else {
-			d.timer.Reset(dur)
-		}
-		d.timerActive = true
+		d.timer = time.AfterFunc(dur, func() { close(d.cancel) })
 		return
 	}
 
@@ -66,13 +60,14 @@ func (d *PipeDeadline) Set(t time.Time) {
 	}
 }
 
-// stopTimer runs with mu held. A previously cleared deadline has an inactive
-// timer and an open cancel channel; waiting on that channel would deadlock.
+// stopTimer drains a running callback before Set can replace its channel.
 func (d *PipeDeadline) stopTimer() {
-	if d.timerActive && !d.timer.Stop() {
-		<-d.cancel // The callback finishes before Set can replace cancel.
+	if d.timer != nil {
+		if !d.timer.Stop() {
+			<-d.cancel
+		}
+		d.timer = nil
 	}
-	d.timerActive = false
 }
 
 // stop prevents both existing and concurrently refreshed timers from retaining

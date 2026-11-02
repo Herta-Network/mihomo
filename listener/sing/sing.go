@@ -157,7 +157,7 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 	}
 
 	connID := utils.NewUUIDV4().String() // make a new SNAT key
-	reply := &packetReply{writer: bufio.NewNetPacketWriter(conn), packetWriter: conn}
+	reply := &packetReply{writer: bufio.NewNetPacketWriter(conn)}
 	rAddr := N.NewCustomAddr(h.Type.String(), connID, metadata.Source.UDPAddr())
 	lAddr := conn.LocalAddr()
 	if address := getInAddr(ctx); address != nil {
@@ -196,7 +196,7 @@ func (h *ListenerHandler) NewPacket(ctx context.Context, key netip.AddrPort, buf
 	packetWriter := init(nil)
 	writer := bufio.NewNetPacketWriter(packetWriter)
 	cPacket := &packet{
-		reply: &packetReply{writer: writer, packetWriter: packetWriter},
+		reply: &packetReply{writer: writer},
 		rAddr: metadata.Source.UDPAddr(),
 		buff:  buffer,
 	}
@@ -276,15 +276,14 @@ func (c *packet) WriteBackTarget() C.WriteBack { return c.reply }
 // packetReply outlives any one payload/metadata pair. NAT stores this handle,
 // while each packet owns only its payload and per-packet routing metadata.
 type packetReply struct {
-	mutex        sync.Mutex
-	writer       network.NetPacketWriter
-	packetWriter network.PacketWriter
+	mutex  sync.Mutex
+	writer network.NetPacketWriter
 }
 
 func (c *packetReply) close() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	c.writer, c.packetWriter = nil, nil
+	c.writer = nil
 }
 
 func (c *packetReply) WriteBack(b []byte, addr net.Addr) (n int, err error) {
@@ -297,22 +296,11 @@ func (c *packetReply) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 	defer c.mutex.Unlock()
 	conn := c.writer
 	if conn == nil {
-		err = errors.New("writeBack to closed connection")
+		err = net.ErrClosed
 		return
 	}
 
 	return conn.WriteTo(b, addr)
-}
-
-func (c *packetReply) WriteBackBuffer(buffer *buf.Buffer, destination M.Socksaddr) error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	if c.packetWriter == nil {
-		buffer.Release()
-		return net.ErrClosed
-	}
-	buffer = network.NewReadWaitOptions(nil, c.packetWriter).Copy(buffer)
-	return c.packetWriter.WritePacket(buffer, destination)
 }
 
 // LocalAddr returns the source IP/Port of UDP Packet

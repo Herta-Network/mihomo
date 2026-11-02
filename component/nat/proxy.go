@@ -6,8 +6,6 @@ import (
 	"sync"
 
 	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/sing/common/buf"
-	M "github.com/metacubex/sing/common/metadata"
 )
 
 type writeBackProxy struct {
@@ -39,13 +37,6 @@ func (w *writeBackProxy) UpdateWriteBack(wb C.WriteBack) {
 	w.wb = wb
 	w.defaultSource = defaultSource
 	w.access.Unlock()
-}
-
-func (w *writeBackProxy) WriteBackBuffer(buffer *buf.Buffer, destination M.Socksaddr) error {
-	w.access.RLock()
-	wb := w.wb
-	w.access.RUnlock()
-	return C.WriteBackBuffer(wb, buffer, destination)
 }
 
 func NewWriteBackProxy(wb C.WriteBack) C.WriteBackProxy {

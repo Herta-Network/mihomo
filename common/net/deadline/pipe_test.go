@@ -9,27 +9,27 @@ import (
 	"time"
 )
 
-func TestPipeDeadlineReuseAfterClearAndExpiry(t *testing.T) {
+func TestPipeDeadlineClearRefreshAndExpiry(t *testing.T) {
 	d := MakePipeDeadline()
 	defer d.stop()
 	future := time.Now().Add(time.Hour)
 	d.Set(future)
-	timer, open := d.timer, d.Wait()
+	open := d.Wait()
 	for _, next := range []time.Time{{}, {}, future, future, {}} {
 		d.Set(next)
-		if d.timer != timer || d.Wait() != open || isClosedChan(open) {
-			t.Fatal("refresh or clear replaced active timer/channel")
+		if d.Wait() != open || isClosedChan(open) {
+			t.Fatal("refresh or clear replaced the open channel")
 		}
 	}
 	d.Set(time.Now().Add(time.Millisecond))
 	select {
 	case <-open:
 	case <-time.After(3 * time.Second):
-		t.Fatal("reused timer did not expire")
+		t.Fatal("deadline did not expire")
 	}
 	d.Set(future)
 	refreshed := d.Wait()
-	if d.timer != timer || refreshed == open || isClosedChan(refreshed) {
+	if refreshed == open || isClosedChan(refreshed) {
 		t.Fatal("expired deadline did not start a fresh wait epoch")
 	}
 	d.Set(time.Now().Add(-time.Second))
@@ -39,10 +39,6 @@ func TestPipeDeadlineReuseAfterClearAndExpiry(t *testing.T) {
 	d.Set(time.Time{})
 	if isClosedChan(d.Wait()) {
 		t.Fatal("cleared deadline is still expired")
-	}
-	d.Set(future)
-	if n := testing.AllocsPerRun(100, func() { d.Set(future) }); n != 0 {
-		t.Fatalf("steady deadline refresh allocates: %g", n)
 	}
 }
 
@@ -70,7 +66,7 @@ func TestPipeDeadlineConcurrentSetAndStop(t *testing.T) {
 	workers.Wait()
 	d.stop()
 	d.Set(time.Now().Add(time.Hour))
-	if d.timer != nil || d.timerActive || !d.stopped {
+	if d.timer != nil || !d.stopped {
 		t.Fatal("closed owner retained or rearmed timer")
 	}
 }
@@ -101,7 +97,7 @@ func TestPacketDeadlineClosePreventsRefresh(t *testing.T) {
 	if err := c.SetReadDeadline(time.Time{}); !errors.Is(err, net.ErrClosed) {
 		t.Fatalf("deadline after close: %v", err)
 	}
-	if c.pipeDeadline.timer != nil || c.pipeDeadline.timerActive || !c.pipeDeadline.stopped {
+	if c.pipeDeadline.timer != nil || !c.pipeDeadline.stopped {
 		t.Fatal("closed packet connection retained timer")
 	}
 }

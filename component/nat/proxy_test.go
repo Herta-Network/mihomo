@@ -8,7 +8,6 @@ import (
 	"time"
 
 	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/sing/common/buf"
 	M "github.com/metacubex/sing/common/metadata"
 )
 
@@ -59,15 +58,11 @@ func (*detachedReplyPacket) WriteBack([]byte, net.Addr) (int, error) {
 func (*detachedReplyPacket) LocalAddr() net.Addr { return &net.UDPAddr{} }
 func (p *detachedReplyPacket) Drop()             { p.target = nil }
 
-type consumingReply struct{ seen *buf.Buffer }
+type consumingReply struct{ seen string }
 
-func (*consumingReply) WriteBack([]byte, net.Addr) (int, error) {
-	panic("owned reply fell back to bytes")
-}
-func (r *consumingReply) WriteBackBuffer(b *buf.Buffer, _ M.Socksaddr) error {
-	r.seen = b
-	b.Release()
-	return nil
+func (r *consumingReply) WriteBack(data []byte, _ net.Addr) (int, error) {
+	r.seen = string(data)
+	return len(data), nil
 }
 
 func TestWriteBackProxyDetachesPacketAndMetadata(t *testing.T) {
@@ -83,9 +78,7 @@ func TestWriteBackProxyDetachesPacketAndMetadata(t *testing.T) {
 			t.Fatal("proxy retained the packet/metadata envelope")
 		}
 		adapter.Drop()
-		b := buf.NewSize(64)
-		b.WriteString("reply")
-		if err := C.WriteBackBuffer(proxy, b, M.ParseSocksaddr("127.0.0.1:53")); err != nil || reply.seen != b || b.RawCap() != 0 {
+		if n, err := proxy.WriteBack([]byte("reply"), M.ParseSocksaddr("127.0.0.1:53")); err != nil || n != 5 || reply.seen != "reply" {
 			t.Fatalf("reply failed after packet drop: %v", err)
 		}
 	}

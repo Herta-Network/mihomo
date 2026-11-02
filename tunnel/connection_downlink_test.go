@@ -23,7 +23,7 @@ type ownedDownlinkConn struct {
 	closed  bool
 }
 
-func (c *ownedDownlinkConn) ReadPacketBuffer() (*buf.Buffer, M.Socksaddr, error) {
+func (c *ownedDownlinkConn) nextPacket() (*buf.Buffer, M.Socksaddr, error) {
 	if c.reads == len(c.buffers) {
 		return nil, M.Socksaddr{}, io.EOF
 	}
@@ -31,9 +31,18 @@ func (c *ownedDownlinkConn) ReadPacketBuffer() (*buf.Buffer, M.Socksaddr, error)
 	c.reads++
 	return c.buffers[i], c.sources[i], nil
 }
-func (*ownedDownlinkConn) WaitReadFrom() ([]byte, func(), net.Addr, error) {
-	panic("owned downstream capability bypassed")
+func (c *ownedDownlinkConn) WaitReadFrom() ([]byte, func(), net.Addr, error) {
+	b, source, err := c.nextPacket()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	var addr net.Addr = source
+	if source.IsIP() {
+		addr = source.UDPAddr()
+	}
+	return b.Bytes(), b.Release, addr, nil
 }
+
 func (c *ownedDownlinkConn) Close() error { c.closed = true; return nil }
 
 type ownedDownlinkReply struct {
@@ -42,28 +51,29 @@ type ownedDownlinkReply struct {
 	sources []M.Socksaddr
 	seen    int
 	fail    bool
+	short   bool
 }
 
-func (*ownedDownlinkReply) WriteBack([]byte, net.Addr) (int, error) {
-	panic("owned reply capability lost")
-}
-func (r *ownedDownlinkReply) WriteBackBuffer(buffer *buf.Buffer, source M.Socksaddr) error {
-	defer buffer.Release()
-	if buffer != r.want[r.seen] || buffer.Start() != 32 {
-		r.t.Fatal("downstream buffer identity/headroom lost")
+func (r *ownedDownlinkReply) WriteBack(data []byte, addr net.Addr) (int, error) {
+	source := M.SocksaddrFromNet(addr)
+	if string(data) != string(r.want[r.seen].Bytes()) {
+		r.t.Fatal("downstream payload changed")
 	}
 	if source != r.sources[r.seen] {
 		r.t.Fatalf("source=%v want=%v", source, r.sources[r.seen])
 	}
 	r.seen++
 	if r.fail {
-		return io.ErrClosedPipe
+		return 0, io.ErrClosedPipe
 	}
-	return nil
+	if r.short && len(data) > 0 {
+		return len(data) - 1, nil
+	}
+	return len(data), nil
 }
 
-func TestPacketOwnedDownlinkMappingAccountingAndRelease(t *testing.T) {
-	for _, fail := range []bool{false, true} {
+func TestPacketDownlinkMappingAccountingAndRelease(t *testing.T) {
+	for _, mode := range []string{"success", "error", "short"} {
 		metadata := &C.Metadata{DstIP: netip.MustParseAddr("198.18.0.1"), DstPort: 53}
 		sender := newPacketSender().(*packetSender)
 		target := netip.MustParseAddr("127.0.0.2")
@@ -78,13 +88,15 @@ func TestPacketOwnedDownlinkMappingAccountingAndRelease(t *testing.T) {
 		raw.sources = []M.Socksaddr{M.SocksaddrFrom(target, 53), M.SocksaddrFrom(target, 5353), M.ParseSocksaddr("invalid.example:99")}
 		manager := &statistic.Manager{}
 		tracker := statistic.NewUDPTracker(raw, manager, metadata.Clone(), nil, 0, 0, true)
-		reply := &ownedDownlinkReply{t: t, want: raw.buffers, fail: fail, sources: []M.Socksaddr{
+		reply := &ownedDownlinkReply{t: t, want: raw.buffers, fail: mode == "error", short: mode == "short", sources: []M.Socksaddr{
 			M.SocksaddrFrom(metadata.DstIP, 53), M.SocksaddrFrom(metadata.DstIP, 5353), M.SocksaddrFrom(metadata.DstIP, 53),
 		}}
 		handleUDPToLocal(nat.NewWriteBackProxy(reply), tracker, sender, "owned-downlink-test", netip.AddrPortFrom(target, 53))
 		wantCount, wantBytes := 3, int64(len("replyfallback"))
-		if fail {
+		if mode == "error" {
 			wantCount, wantBytes = 1, 0
+		} else if mode == "short" {
+			wantCount, wantBytes = 2, 5
 		}
 		_, download := manager.Total()
 		if reply.seen != wantCount || download != wantBytes || tracker.DownloadTotal.Load() != wantBytes || !raw.closed || !errors.Is(sender.ctx.Err(), context.Canceled) {
